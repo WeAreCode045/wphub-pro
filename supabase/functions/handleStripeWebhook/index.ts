@@ -1,7 +1,17 @@
 
 import Stripe from 'https://esm.sh/stripe@14.11.0?target=deno';
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';

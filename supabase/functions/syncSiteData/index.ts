@@ -14,7 +14,17 @@ function getSupabaseClientOrShim(req: Request) {
   return createClientFromRequest(req);
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   try {
     const base44 = getSupabaseClientOrShim(req);
     // Require Bearer token auth
@@ -30,12 +40,12 @@ serve(async (req: Request) => {
       }
     }
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
     }
 
     const { api_key, wp_version, plugins, site_url } = await req.json();
     if (!api_key) {
-      return new Response(JSON.stringify({ error: 'API key is required' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'API key is required' }), { status: 400, headers: CORS_HEADERS });
     }
 
     // Find site by API key

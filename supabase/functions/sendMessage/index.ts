@@ -1,13 +1,25 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   // Require authentication
   const authHeader = req.headers.get("authorization") || "";
   const jwt = authHeader.replace(/^Bearer /i, "");
   if (!jwt) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: CORS_HEADERS,
     });
   }
 
@@ -23,7 +35,7 @@ Deno.serve(async (req: Request) => {
     if (!subject || !message || !sender_id || !recipient_id || !recipient_type) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: CORS_HEADERS,
       });
     }
 
@@ -32,7 +44,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Sender not found" }), {
         status: 404,
-        headers: { "Content-Type": "application/json" },
+        headers: CORS_HEADERS,
       });
     }
     let recipient_email = null;
@@ -64,7 +76,7 @@ Deno.serve(async (req: Request) => {
     if (messageError || !createdMessage) {
       return new Response(JSON.stringify({ error: "Failed to send message" }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: CORS_HEADERS,
       });
     }
 
@@ -81,7 +93,7 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ success: true, message: "Bericht succesvol verzonden", message_id: createdMessage.id }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: CORS_HEADERS }
     );
   } catch (error) {
     let errorMessage = "Failed to send message";
@@ -90,7 +102,7 @@ Deno.serve(async (req: Request) => {
     }
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: CORS_HEADERS }
     );
   }
 });

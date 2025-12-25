@@ -3,7 +3,17 @@
 declare const Deno: any;
 
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   try {
     const body = await req.json();
     const { site_id, plugin_slug, plugin_id } = body || {};

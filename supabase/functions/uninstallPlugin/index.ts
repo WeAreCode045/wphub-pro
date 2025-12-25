@@ -1,6 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   try {
     // Require authentication
     const authHeader = req.headers.get("authorization") || "";
@@ -8,7 +18,7 @@ Deno.serve(async (req) => {
     if (!jwt) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
-        headers: { "Content-Type": "application/json" },
+        headers: CORS_HEADERS,
       });
     }
 
@@ -23,7 +33,7 @@ Deno.serve(async (req) => {
     if (!plugin_id || !site_id) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: CORS_HEADERS,
       });
     }
 
@@ -32,7 +42,7 @@ Deno.serve(async (req) => {
     if (pluginError || !plugin) {
       return new Response(JSON.stringify({ error: "Plugin not found" }), {
         status: 404,
-        headers: { "Content-Type": "application/json" },
+        headers: CORS_HEADERS,
       });
     }
 

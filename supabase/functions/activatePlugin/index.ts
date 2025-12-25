@@ -1,6 +1,16 @@
 import { authMeWithToken, extractBearerFromReq, jsonResponse } from '../_helpers.ts';
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   try {
     const token = extractBearerFromReq(req);
     const user = await authMeWithToken(token);

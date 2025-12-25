@@ -11,12 +11,22 @@ function jsonResponse(body: any, status = 200) {
   });
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   // Require authentication
   const authHeader = req.headers.get("authorization") || "";
   const jwt = authHeader.replace(/^Bearer /i, "");
   if (!jwt) {
-    return jsonResponse({ error: "unauthorized" }, 401);
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS_HEADERS });
   }
 
   // Supabase client (service role)
@@ -27,7 +37,7 @@ serve(async (req) => {
   // Stripe client
   const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeSecret) {
-    return jsonResponse({ error: "Stripe secret key not configured" }, 500);
+    return new Response(JSON.stringify({ error: "Stripe secret key not configured" }), { status: 500, headers: CORS_HEADERS });
   }
   const stripe = new Stripe(stripeSecret, { apiVersion: "2022-11-15" });
 
@@ -35,7 +45,7 @@ serve(async (req) => {
     const body = await req.json();
     const { user_id, action, new_plan_id, billing_interval } = body;
     if (!user_id || !action || !new_plan_id || !billing_interval) {
-      return jsonResponse({ error: "Missing required parameters" }, 400);
+      return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: CORS_HEADERS });
     }
 
     // Fetch user and current subscription
