@@ -135,6 +135,15 @@ export default function SiteDetail() {
     initialData: [],
   });
 
+  const handleRefreshPlugins = async () => {
+    const result = await refetchWpPlugins();
+    if (result.data && result.data.length > 0) {
+      alert(`✅ Plugins vernieuwd: ${result.data.length} gevonden`);
+    } else if (result.data && result.data.length === 0) {
+      alert('ℹ️ Geen plugins gevonden op de site');
+    }
+  };
+
   const { data: wpThemes = [], isLoading: isLoadingWpThemes, refetch: refetchWpThemes } = useQuery({
     queryKey: ['wp-themes', siteId, site?.url, site?.api_key],
     queryFn: async () => {
@@ -146,6 +155,15 @@ export default function SiteDetail() {
     refetchInterval: 30000,
     initialData: [],
   });
+
+  const handleRefreshThemes = async () => {
+    const result = await refetchWpThemes();
+    if (result.data && result.data.length > 0) {
+      alert(`✅ Themes vernieuwd: ${result.data.length} gevonden`);
+    } else if (result.data && result.data.length === 0) {
+      alert('ℹ️ Geen themes gevonden op de site');
+    }
+  };
 
   const { data: connectorVersionInfo } = useQuery({
     queryKey: ['connector-version', siteId],
@@ -1190,15 +1208,29 @@ export default function SiteDetail() {
                     <Package className="w-5 h-5 text-indigo-600" />
                     Geïnstalleerde Plugins ({wpPlugins.length})
                   </CardTitle>
-                  {canManage && (
+                  <div className="flex items-center gap-2">
                     <Button
-                      onClick={() => setShowInstallDialog(true)}
-                      className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshPlugins}
+                      disabled={isLoadingWpPlugins}
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Plugin Installeren
+                      {isLoadingWpPlugins ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
                     </Button>
-                  )}
+                    {canManage && (
+                      <Button
+                        onClick={() => setShowInstallDialog(true)}
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Plugin Installeren
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
@@ -1341,7 +1373,7 @@ export default function SiteDetail() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => refetchWpThemes()}
+                      onClick={handleRefreshThemes}
                       disabled={isLoadingWpThemes}
                     >
                       {isLoadingWpThemes ? (
