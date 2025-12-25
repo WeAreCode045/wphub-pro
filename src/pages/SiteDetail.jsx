@@ -459,8 +459,12 @@ export default function SiteDetail() {
     onSuccess: () => {
       refetchWpPlugins();
     },
-    onError: (error) => {
-      alert('❌ Fout bij toggle: ' + error.message);
+    onError: (error: any) => {
+      // Try to extract detailed error message from API response
+      const errorData = error?.data || {};
+      const errorMsg = errorData.error || error.message || 'Onbekende fout';
+      const details = errorData.details ? ` (${errorData.details})` : '';
+      alert('❌ Fout bij toggle: ' + errorMsg + details);
     }
   });
 

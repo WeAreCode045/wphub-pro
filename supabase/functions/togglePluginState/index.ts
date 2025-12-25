@@ -2,6 +2,20 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
+// Helper function to fetch with timeout
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 10000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -39,34 +53,58 @@ serve(async (req) => {
 
     // Check if custom connector endpoints are available
     const pingUrl = `${site_url}/wp-json/wphub/v1/ping`;
-    const pingRes = await fetch(pingUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key })
-    });
+    let pingRes;
+    try {
+      pingRes = await fetchWithTimeout(pingUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key })
+      }, 5000);
+    } catch (err) {
+      console.error('[togglePluginState] Ping timeout or error:', err instanceof Error ? err.message : String(err));
+      return new Response(JSON.stringify({ 
+        error: 'WordPress site is not responding. Please check the site URL and connector configuration.',
+        details: 'Connection timeout'
+      }), { status: 503, headers: corsHeaders });
+    }
 
     if (!pingRes.ok) {
+      const pingText = await pingRes.text();
+      console.error('[togglePluginState] Ping failed:', pingRes.status, pingText);
       return new Response(JSON.stringify({ 
-        error: 'WP Plugin Hub Connector is not properly configured on this site. Please update the connector plugin and try again.',
-        details: 'The connector endpoints are not responding correctly'
+        error: 'WP Plugin Hub Connector is not properly configured on this site.',
+        details: `Ping failed with status ${pingRes.status}`
       }), { status: 502, headers: corsHeaders });
     }
 
     // Get current plugin status
     const pluginsUrl = `${site_url}/wp-json/wphub/v1/getInstalledPlugins`;
-    const pluginsRes = await fetch(pluginsUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key })
-    });
+    let pluginsRes;
+    try {
+      pluginsRes = await fetchWithTimeout(pluginsUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key })
+      }, 5000);
+    } catch (err) {
+      console.error('[togglePluginState] Get plugins timeout:', err instanceof Error ? err.message : String(err));
+      return new Response(JSON.stringify({ 
+        error: 'Could not fetch plugin list from site. Site may be slow or unreachable.',
+        details: 'Connection timeout'
+      }), { status: 503, headers: corsHeaders });
+    }
 
     let isActive = false;
     if (pluginsRes.ok) {
-      const pluginsData = await pluginsRes.json();
-      const plugins = pluginsData.plugins || [];
-      const plugin = plugins.find((p: any) => p.slug === plugin_slug || p.slug.startsWith(plugin_slug + '/'));
-      if (plugin) {
-        isActive = plugin.status === 'active';
+      try {
+        const pluginsData = await pluginsRes.json();
+        const plugins = pluginsData.plugins || [];
+        const plugin = plugins.find((p: any) => p.slug === plugin_slug || p.slug.startsWith(plugin_slug + '/'));
+        if (plugin) {
+          isActive = plugin.status === 'active';
+        }
+      } catch (err) {
+        console.error('[togglePluginState] Error parsing plugins response:', err instanceof Error ? err.message : String(err));
       }
     }
 
@@ -75,19 +113,28 @@ serve(async (req) => {
     const toggleUrl = `${site_url}/wp-json/wphub/v1/${endpoint}`;
 
     // Call toggle endpoint
-    const toggleRes = await fetch(toggleUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key, plugin_slug })
-    });
+    let toggleRes;
+    try {
+      toggleRes = await fetchWithTimeout(toggleUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key, plugin_slug })
+      }, 10000);
+    } catch (err) {
+      console.error(`[togglePluginState] ${endpoint} timeout:`, err instanceof Error ? err.message : String(err));
+      return new Response(JSON.stringify({ 
+        error: `Plugin ${isActive ? 'deactivation' : 'activation'} timed out. The operation may still have succeeded. Please refresh to verify.`,
+        details: 'Connection timeout'
+      }), { status: 503, headers: corsHeaders });
+    }
 
     if (!toggleRes.ok) {
       const errorData = await toggleRes.text();
       console.error(`[togglePluginState] ${endpoint} failed:`, toggleRes.status, errorData);
       
       return new Response(JSON.stringify({ 
-        error: `Failed to ${endpoint === 'activatePlugin' ? 'activate' : 'deactivate'} plugin. Please ensure the connector plugin is properly installed and configured.`,
-        status: toggleRes.status
+        error: `Failed to ${endpoint === 'activatePlugin' ? 'activate' : 'deactivate'} plugin. The WordPress connector may need to be updated.`,
+        details: `HTTP ${toggleRes.status}`
       }), { status: 502, headers: corsHeaders });
     }
 
@@ -100,7 +147,7 @@ serve(async (req) => {
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[togglePluginState] Error:', msg);
+    console.error('[togglePluginState] Unexpected error:', msg);
     return new Response(JSON.stringify({ error: msg }), { status: 500, headers: corsHeaders });
   }
 });
