@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function jsonResponse(body: any, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -14,22 +15,14 @@ async function uploadToStorage(fileName: string, data: Uint8Array, bucket: strin
   return { file_url: `https://storage.example.com/${bucket}/${fileName}` };
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   // Require authentication
   const authHeader = req.headers.get("authorization") || "";
   const jwt = authHeader.replace(/^Bearer /i, "");
   if (!jwt) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS_HEADERS });
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
   // Supabase client (service role)
@@ -41,7 +34,7 @@ serve(async (req) => {
     const body = await req.json();
     const { plugin_slug } = body;
     if (!plugin_slug) {
-      return jsonResponse({ error: "Missing required parameter: plugin_slug" }, 400);
+      return new Response(JSON.stringify({ error: "Missing required parameter: plugin_slug" }), { status: 400, headers: corsHeaders });
     }
 
     // Download plugin zip from WordPress.org (dummy logic, replace with actual fetch)
@@ -54,9 +47,10 @@ serve(async (req) => {
     const fileName = `${plugin_slug}-v${result.plugin_data?.version || "unknown"}.zip`;
     const uploadRes = await uploadToStorage(fileName, zipBytes, "uploads", "application/zip");
 
-    return jsonResponse({ success: true, plugin_data: result.plugin_data, file_url: uploadRes.file_url });
+    return new Response(JSON.stringify({ success: true, plugin_data: result.plugin_data, file_url: uploadRes.file_url }), { status: 200, headers: corsHeaders });
   } catch (err: any) {
     console.error("downloadPluginFromWordPress error", err);
-    return jsonResponse({ error: err.message || String(err) }, 500);
+    const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown error');
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: corsHeaders });
   }
 });

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function jsonResponse(body: any, status = 200) {
     return new Response(JSON.stringify(body), {
@@ -95,16 +96,16 @@ Deno.serve(async (req: Request) => {
         // Insert roles
         const { data: createdRoles, error: insertError } = await supabase.from("team_roles").insert(defaultRoles).select();
         if (insertError || !createdRoles) {
-            return jsonResponse({ success: false, error: insertError?.message || "Failed to create roles" }, 500);
+            return new Response(JSON.stringify({ success: false, error: insertError?.message || "Failed to create roles" }), { status: 500, headers: corsHeaders });
         }
 
-        return jsonResponse({ success: true, message: "Default team roles created successfully", roles: createdRoles });
+        return new Response(JSON.stringify({ success: true, message: "Default team roles created successfully", roles: createdRoles }), { status: 200, headers: corsHeaders });
     } catch (error) {
         let errorMessage = "Failed to create default team roles";
         if (error && typeof error === "object" && "message" in error) {
             errorMessage = (error as { message?: string }).message || errorMessage;
         }
         console.error("[createDefaultTeamRoles] Error:", errorMessage);
-        return jsonResponse({ success: false, error: errorMessage }, 500);
+        return new Response(JSON.stringify({ success: false, error: errorMessage }), { status: 500, headers: corsHeaders });
     }
 });

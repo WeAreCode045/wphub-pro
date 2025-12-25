@@ -1,21 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+// deno-lint-ignore no-explicit-any
+Deno.serve(async (req: Request) => {
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     // TODO: Implement user authentication and lookup
     // TODO: Add main business logic here
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: CORS_HEADERS });
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: CORS_HEADERS });
+    const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: corsHeaders });
   }
 });

@@ -1,30 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // @deno-types="npm:@types/stripe"
 import Stripe from "https://esm.sh/stripe@12.6.0?target=deno";
-
-function jsonResponse(body: any, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   // Require authentication
   const authHeader = req.headers.get("authorization") || "";
   const jwt = authHeader.replace(/^Bearer /i, "");
   if (!jwt) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS_HEADERS });
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
   // Supabase client (service role)
@@ -35,7 +21,7 @@ Deno.serve(async (req: Request) => {
   // Stripe client
   const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeSecret) {
-    return jsonResponse({ error: "Stripe secret key not configured" }, 500);
+    return new Response(JSON.stringify({ error: "Stripe secret key not configured" }), { status: 500, headers: corsHeaders });
   }
   const stripe = new Stripe(stripeSecret, { apiVersion: "2022-11-15" });
 
@@ -43,19 +29,19 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { user_id, plan_id, price_id, billing_cycle, success_url, cancel_url, discount_code } = body;
     if (!user_id || !plan_id || !price_id || !billing_cycle) {
-      return jsonResponse({ error: "Missing required parameters" }, 400);
+      return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: corsHeaders });
     }
 
     // Fetch user
     const { data: user, error: userError } = await supabase.from("users").select("*", { count: "exact", head: false }).eq("id", user_id).single();
     if (userError || !user) {
-      return jsonResponse({ error: "User not found" }, 404);
+      return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
     }
 
     // Fetch plan
     const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", plan_id).single();
     if (planError || !plan) {
-      return jsonResponse({ error: "Plan not found" }, 404);
+      return new Response(JSON.stringify({ error: "Plan not found" }), { status: 404, headers: corsHeaders });
     }
 
     // Get or create Stripe customer
@@ -112,13 +98,13 @@ Deno.serve(async (req: Request) => {
       if (discounts && discounts.length > 0) {
         const discount = discounts[0];
         if (discount.expires_at && new Date(discount.expires_at) < new Date()) {
-          return jsonResponse({ error: "Discount code has expired" }, 400);
+          return new Response(JSON.stringify({ error: "Discount code has expired" }), { status: 400, headers: corsHeaders });
         }
         if (discount.max_redemptions && discount.times_redeemed >= discount.max_redemptions) {
-          return jsonResponse({ error: "Discount code has reached maximum redemptions" }, 400);
+          return new Response(JSON.stringify({ error: "Discount code has reached maximum redemptions" }), { status: 400, headers: corsHeaders });
         }
         if (discount.applies_to_plans && discount.applies_to_plans.length > 0 && !discount.applies_to_plans.includes(plan.id)) {
-          return jsonResponse({ error: "Discount code not valid for this plan" }, 400);
+          return new Response(JSON.stringify({ error: "Discount code not valid for this plan" }), { status: 400, headers: corsHeaders });
         }
         if (discount.stripe_coupon_id) {
           sessionParams.discounts = [{ coupon: discount.stripe_coupon_id }];
@@ -137,13 +123,13 @@ Deno.serve(async (req: Request) => {
       details: `Session ID: ${session.id}, Billing: ${billing_cycle}`,
     });
 
-    return jsonResponse({ success: true, session_id: session.id, url: session.url });
+    return new Response(JSON.stringify({ success: true, session_id: session.id, url: session.url }), { status: 200, headers: corsHeaders });
   } catch (error) {
     let errorMessage = "Failed to create checkout session";
     if (error && typeof error === "object" && "message" in error) {
       errorMessage = (error as { message?: string }).message || errorMessage;
     }
     console.error("Error creating checkout session:", error);
-    return jsonResponse({ success: false, error: errorMessage }, 500);
+    return new Response(JSON.stringify({ success: false, error: errorMessage }), { status: 500, headers: corsHeaders });
   }
 });

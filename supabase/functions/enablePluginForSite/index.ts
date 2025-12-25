@@ -1,22 +1,15 @@
 import { createClientFromRequest } from '../base44Shim.js';
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const cors = handleCors(req);
+    if (cors) return cors;
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
         if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+            return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
         }
 
         const { site_id, plugin_id, enabled } = await req.json();
@@ -26,13 +19,13 @@ Deno.serve(async (req) => {
         console.log('[enablePluginForSite] Enabled:', enabled);
 
         if (!site_id || !plugin_id || enabled === undefined) {
-            return Response.json({ error: 'Missing required parameters' }, { status: 400 });
+            return Response.json({ error: 'Missing required parameters' }, { status: 400, headers: corsHeaders });
         }
 
         // Get site
         const sites = await base44.entities.Site.filter({ id: site_id });
         if (sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404 });
+            return Response.json({ error: 'Site not found' }, { status: 404, headers: corsHeaders });
         }
         const site = sites[0];
 

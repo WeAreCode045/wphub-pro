@@ -1,17 +1,9 @@
-
 import Stripe from 'https://esm.sh/stripe@14.11.0?target=deno';
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
@@ -28,14 +20,14 @@ Deno.serve(async (req: Request) => {
         event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
       } catch (err) {
         console.error('Stripe signature verification failed:', err);
-        return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 400, headers: corsHeaders });
       }
     } else {
       try {
         event = JSON.parse(rawBody);
       } catch (err) {
         console.error('Failed to parse webhook body:', err);
-        return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400, headers: corsHeaders });
       }
     }
 

@@ -14,15 +14,11 @@ function getSupabaseClientOrShim(req: Request) {
   return createClientFromRequest(req);
 }
 
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
+
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, content-type",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-      "Content-Type": "application/json"
-    }});
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const base44 = getSupabaseClientOrShim(req);
     // Require Bearer token auth
@@ -38,20 +34,20 @@ serve(async (req: Request) => {
       }
     }
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const { site_id, plugin_id } = await req.json();
     if (!site_id || !plugin_id) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: corsHeaders });
     }
 
     // Load site and plugin
     const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
-    if (!sites || sites.length === 0) return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404 });
+    if (!sites || sites.length === 0) return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: corsHeaders });
     const site = sites[0];
     const plugins = await base44.asServiceRole.entities.Plugin.filter({ id: plugin_id });
-    if (!plugins || plugins.length === 0) return new Response(JSON.stringify({ error: 'Plugin not found' }), { status: 404 });
+    if (!plugins || plugins.length === 0) return new Response(JSON.stringify({ error: 'Plugin not found' }), { status: 404, headers: corsHeaders });
     const plugin = plugins[0];
 
     // Call connector endpoint

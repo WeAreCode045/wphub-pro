@@ -1,16 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     // Require authentication
     const authHeader = req.headers.get("authorization") || "";
@@ -18,7 +11,7 @@ Deno.serve(async (req) => {
     if (!jwt) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
-        headers: CORS_HEADERS,
+        headers: corsHeaders,
       });
     }
 
@@ -33,7 +26,7 @@ Deno.serve(async (req) => {
     if (!plugin_id || !site_id) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
         status: 400,
-        headers: CORS_HEADERS,
+        headers: corsHeaders,
       });
     }
 
@@ -42,7 +35,7 @@ Deno.serve(async (req) => {
     if (pluginError || !plugin) {
       return new Response(JSON.stringify({ error: "Plugin not found" }), {
         status: 404,
-        headers: CORS_HEADERS,
+        headers: corsHeaders,
       });
     }
 
@@ -55,7 +48,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, message: 'Plugin successfully uninstalled' }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     let errorMessage = "Failed to uninstall plugin";

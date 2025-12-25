@@ -1,42 +1,35 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const cors = handleCors(req);
+    if (cors) return cors;
     try {
         const supabase = createClient(Deno.env.get('SB_URL'), Deno.env.get('SB_SERVICE_ROLE_KEY'));
         const { api_key } = await req.json();
         if (!api_key) {
-            return Response.json({ error: 'API key is required' }, { status: 401 });
+            return Response.json({ error: 'API key is required' }, { status: 401, headers: corsHeaders });
         }
         // Find site by API key
         const { data: sites, error: siteError } = await supabase.from('sites').select('*').eq('api_key', api_key);
         if (siteError || !sites || sites.length === 0) {
-            return Response.json({ error: 'Invalid API key' }, { status: 401 });
+            return Response.json({ error: 'Invalid API key' }, { status: 401, headers: corsHeaders });
         }
         const site = sites[0];
         // Get all plugin installations for this site
         const { data: allInstallations, error: instError } = await supabase.from('plugin_installations').select('*').eq('site_id', site.id);
         if (instError || !allInstallations) {
-            return Response.json({ error: 'Failed to fetch plugin installations' }, { status: 500 });
+            return Response.json({ error: 'Failed to fetch plugin installations' }, { status: 500, headers: corsHeaders });
         }
         // Get all plugins
         const { data: allPlugins, error: pluginsError } = await supabase.from('plugins').select('*');
         if (pluginsError || !allPlugins) {
-            return Response.json({ error: 'Failed to fetch plugins' }, { status: 500 });
+            return Response.json({ error: 'Failed to fetch plugins' }, { status: 500, headers: corsHeaders });
         }
         // Get all versions
         const { data: allVersions, error: versionsError } = await supabase.from('plugin_versions').select('*');
         if (versionsError || !allVersions) {
-            return Response.json({ error: 'Failed to fetch plugin versions' }, { status: 500 });
+            return Response.json({ error: 'Failed to fetch plugin versions' }, { status: 500, headers: corsHeaders });
         }
         const commands = [];
         for (const installation of allInstallations) {

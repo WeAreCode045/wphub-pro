@@ -79,7 +79,7 @@ serve(async (req) => {
     // Insert subscription
     const { data: created, error: createError } = await supabase.from("user_subscriptions").insert(newSubPayload).select();
     if (createError || !created) {
-      return jsonResponse({ success: false, error: `Failed to create subscription: ${createError?.message || "Unknown error"}` }, 500);
+      return new Response(JSON.stringify({ success: false, error: `Failed to create subscription: ${createError?.message || "Unknown error"}` }), { status: 500, headers: corsHeaders });
     }
 
     // Log activity
@@ -90,9 +90,10 @@ serve(async (req) => {
       details: `Plan: ${plan.name}, Bedrag: €${(custom_amount || 0) / 100}, Interval: ${interval || "lifetime"}, Einddatum: ${end_date || "onbeperkt"}`,
     });
 
-    return jsonResponse({ success: true, subscription: created });
+    return new Response(JSON.stringify({ success: true, subscription: created }), { status: 200, headers: corsHeaders });
   } catch (err: any) {
     console.error("assignManualSubscription error", err);
-    return jsonResponse({ success: false, error: err.message || String(err) }, 500);
+    const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown error');
+    return new Response(JSON.stringify({ success: false, error: message }), { status: 500, headers: corsHeaders });
   }
 });

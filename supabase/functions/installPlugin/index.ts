@@ -2,24 +2,17 @@
 
 declare const Deno: any;
 
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const body = await req.json();
     const { site_id, plugin_slug, plugin_id } = body || {};
 
     if (!site_id || (!plugin_slug && !plugin_id)) {
-      return new Response(JSON.stringify({ error: 'Missing required params: site_id and plugin_slug or plugin_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Missing required params: site_id and plugin_slug or plugin_id' }), { status: 400, headers: corsHeaders });
     }
 
     // Privileged operation: use SB_SERVICE_ROLE_KEY
@@ -28,7 +21,7 @@ Deno.serve(async (req: Request) => {
 
     if (!SERVICE_KEY || !SUPA) {
       console.error('installPlugin: missing SERVICE_KEY or SB_URL env');
-      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), { status: 500, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), { status: 500, headers: corsHeaders });
     }
 
     const url = `${SUPA.replace(/\/$/, '')}/functions/v1/executePluginAction`;
@@ -56,7 +49,7 @@ Deno.serve(async (req: Request) => {
 
     // If remote returned non-ok, keep the same status code to surface it
     const statusCode = resp.ok ? 200 : 500;
-    return new Response(JSON.stringify(out), { status: statusCode, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify(out), { status: statusCode, headers: corsHeaders });
   } catch (err: any) {
     console.error('installPlugin error:', err);
     const msg = (err && typeof err.message === 'string') ? err.message : String(err) || 'internal';

@@ -14,17 +14,11 @@ function getSupabaseClientOrShim(req: Request) {
   return createClientFromRequest(req);
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const base44 = getSupabaseClientOrShim(req);
     // Require Bearer token auth
@@ -40,17 +34,17 @@ serve(async (req: Request) => {
       }
     }
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const { site_id } = await req.json();
     if (!site_id) {
-      return new Response(JSON.stringify({ error: 'Missing site_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Missing site_id' }), { status: 400, headers: corsHeaders });
     }
     // Get site details
     const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
     if (!sites || sites.length === 0) {
-      return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: corsHeaders });
     }
     const site = sites[0];
     // Call WordPress REST API to get all plugins using connector endpoint

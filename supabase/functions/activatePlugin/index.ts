@@ -1,39 +1,32 @@
-import { authMeWithToken, extractBearerFromReq, jsonResponse } from '../_helpers.ts';
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { authMeWithToken, extractBearerFromReq } from '../_helpers.ts';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const token = extractBearerFromReq(req);
     const user = await authMeWithToken(token);
-    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+    if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
 
     const { site_id, plugin_id } = await req.json();
-    if (!site_id || !plugin_id) return jsonResponse({ error: 'Missing required parameters' }, 400);
+    if (!site_id || !plugin_id) return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: corsHeaders });
 
     const supa = Deno.env.get('SB_URL')?.replace(/\/$/, '') || '';
     const serviceKey = Deno.env.get('SB_SERVICE_ROLE_KEY');
 
     // Load site
     const siteRes = await fetch(`${supa}/rest/v1/sites?id=eq.${encodeURIComponent(String(site_id))}`, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
-    if (!siteRes.ok) return jsonResponse({ error: 'Failed to load site' }, 500);
+    if (!siteRes.ok) return new Response(JSON.stringify({ error: 'Failed to load site' }), { status: 500, headers: corsHeaders });
     const sites = await siteRes.json();
-    if (!Array.isArray(sites) || sites.length === 0) return jsonResponse({ error: 'Site not found' }, 404);
+    if (!Array.isArray(sites) || sites.length === 0) return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: corsHeaders });
     const site = sites[0];
 
     // Load plugin
     const pluginRes = await fetch(`${supa}/rest/v1/plugins?id=eq.${encodeURIComponent(String(plugin_id))}`, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
-    if (!pluginRes.ok) return jsonResponse({ error: 'Failed to load plugin' }, 500);
+    if (!pluginRes.ok) return new Response(JSON.stringify({ error: 'Failed to load plugin' }), { status: 500, headers: corsHeaders });
     const plugins = await pluginRes.json();
-    if (!Array.isArray(plugins) || plugins.length === 0) return jsonResponse({ error: 'Plugin not found' }, 404);
+    if (!Array.isArray(plugins) || plugins.length === 0) return new Response(JSON.stringify({ error: 'Plugin not found' }), { status: 404, headers: corsHeaders });
     const plugin = plugins[0];
 
     // Call connector endpoint
@@ -41,7 +34,7 @@ Deno.serve(async (req: Request) => {
     const response = await fetch(connectorUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: site.api_key, plugin_slug: plugin.slug }) });
     if (!response.ok) {
       const errorText = await response.text().catch(()=>'');
-      return jsonResponse({ success: false, error: `Connector error: ${response.status} - ${errorText}` }, 500);
+      return new Response(JSON.stringify({ success: false, error: `Connector error: ${response.status} - ${errorText}` }), { status: 500, headers: corsHeaders });
     }
     const result = await response.json();
 
@@ -54,10 +47,11 @@ Deno.serve(async (req: Request) => {
       await fetch(`${supa}/rest/v1/sites?id=eq.${encodeURIComponent(String(site_id))}`, { method: 'PATCH', headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ plugins: currentPlugins, connection_checked_at: new Date().toISOString() }) });
     }
 
-    return jsonResponse({ success: result.success, message: result.message });
+    return new Response(JSON.stringify({ success: result.success, message: result.message }), { status: 200, headers: corsHeaders });
   } catch (err:any) {
     console.error('activatePlugin error', err);
-    return jsonResponse({ success: false, error: err.message || String(err) }, 500);
+    const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown error');
+    return new Response(JSON.stringify({ success: false, error: message }), { status: 500, headers: corsHeaders });
   }
 });
 
