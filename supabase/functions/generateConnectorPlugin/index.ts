@@ -3,6 +3,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3.10.1";
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
+function sanitizeVersion(raw?: string): string {
+  if (raw && raw.trim()) {
+    // Use provided version, only sanitize truly unsafe chars
+    return raw.trim().replace(/[^a-zA-Z0-9._-]/g, '-');
+  }
+  // Default to simple incrementing version
+  const now = new Date();
+  return `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}-${now.getHours()}${now.getMinutes()}`;
+}
+
 // Embedded PHP plugin template with placeholders for version/platform URL
 const TEMPLATE_CONTENT = `<?php
 /**
@@ -114,8 +124,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    // Default version if not provided to avoid 400s on empty payloads
-    const version = body.version || `v${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    // Default/sanitize version to avoid odd filenames
+    const version = sanitizeVersion(body.version);
     const platformUrl = body.platform_url || Deno.env.get('PLATFORM_URL') || Deno.env.get('YOUR_PLATFORM_URL') || 'https://wphub.pro';
 
     // Build plugin from template
