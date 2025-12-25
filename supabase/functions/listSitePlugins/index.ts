@@ -1,13 +1,36 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
-  
-  return new Response(
-    JSON.stringify({ error: "unauthorized" }),
-    { status: 401, headers: corsHeaders }
-  );
+  try {
+    const body = await req.json().catch(() => ({}));
+    const site_url = (body.site_url || '').replace(/\/$/, '');
+    const api_key = body.api_key || '';
+
+    if (!site_url || !api_key) {
+      return new Response(JSON.stringify({ error: 'Missing site_url or api_key' }), { status: 400, headers: corsHeaders });
+    }
+
+    const url = `${site_url}/wp-json/wphub/v1/getInstalledPlugins`;
+    const wpRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key })
+    });
+
+    const text = await wpRes.text();
+    let data: any;
+    try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+    if (!wpRes.ok) {
+      return new Response(JSON.stringify({ error: 'WordPress returned error', status: wpRes.status, data }), { status: 502, headers: corsHeaders });
+    }
+
+    return new Response(JSON.stringify({ success: true, plugins: data.plugins ?? data }), { status: 200, headers: corsHeaders });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: corsHeaders });
+  }
 });

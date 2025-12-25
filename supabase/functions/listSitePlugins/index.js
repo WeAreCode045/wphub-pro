@@ -1,63 +1,36 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req) => {
-  return new Response(
-    JSON.stringify({ error: "unauthorized" }),
-    { status: 401, headers: { "Content-Type": "application/json" } }
-  );
-});
+    const cors = handleCors(req);
+    if (cors) return cors;
+    try {
+        const body = await req.json().catch(() => ({}));
+        const site_url = (body.site_url || '').replace(/\/$/, '');
+        const api_key = body.api_key || '';
+
+        if (!site_url || !api_key) {
+            return new Response(JSON.stringify({ error: 'Missing site_url or api_key' }), { status: 400, headers: corsHeaders });
         }
 
-        await base44.asServiceRole.entities.Site.update(site_id, { connection_status: 'active', connection_checked_at: new Date().toISOString() });
+        const url = `${site_url}/wp-json/wphub/v1/getInstalledPlugins`;
+        const wpRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key })
+        });
 
-        const allPlatformPlugins = await base44.asServiceRole.entities.Plugin.list();
-        console.log('[listSitePlugins] Found', allPlatformPlugins.length, 'platform plugins');
+        const text = await wpRes.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-        const wpPluginSlugs = result.plugins.map(p => p.slug);
-        
-        for (const platformPlugin of allPlatformPlugins) {
-            const currentInstalledOn = platformPlugin.installed_on || [];
-            let needsUpdate = false;
-            let updatedInstalledOn = [...currentInstalledOn];
-
-            const wpPlugin = result.plugins.find(p => p.slug === platformPlugin.slug);
-
-            if (wpPlugin) {
-                const existingEntry = updatedInstalledOn.find(entry => entry.site_id === site_id);
-                
-                if (!existingEntry) {
-                    console.log('[listSitePlugins] Adding', platformPlugin.slug, 'to installed_on for site', site_id);
-                    updatedInstalledOn.push({ site_id: site_id, version: wpPlugin.version });
-                    needsUpdate = true;
-                } else if (existingEntry.version !== wpPlugin.version) {
-                    console.log('[listSitePlugins] Updating version for', platformPlugin.slug, 'on site', site_id, 'from', existingEntry.version, 'to', wpPlugin.version);
-                    existingEntry.version = wpPlugin.version;
-                    needsUpdate = true;
-                }
-            } else {
-                const entryIndex = updatedInstalledOn.findIndex(entry => entry.site_id === site_id);
-                if (entryIndex !== -1) {
-                    console.log('[listSitePlugins] Removing', platformPlugin.slug, 'from installed_on for site', site_id);
-                    updatedInstalledOn.splice(entryIndex, 1);
-                    needsUpdate = true;
-                }
-            }
-
-            if (needsUpdate) {
-                await base44.asServiceRole.entities.Plugin.update(platformPlugin.id, { installed_on: updatedInstalledOn });
-                console.log('[listSitePlugins] ✅ Updated installed_on for plugin:', platformPlugin.slug);
-            }
+        if (!wpRes.ok) {
+            return new Response(JSON.stringify({ error: 'WordPress returned error', status: wpRes.status, data }), { status: 502, headers: corsHeaders });
         }
 
-        console.log('[listSitePlugins] Reconciliation complete');
-        console.log('[listSitePlugins] === END ===');
-
-        return Response.json({ success: true, plugins: result.plugins, total: result.plugins.length });
-
-    } catch (error) {
-        console.error('[listSitePlugins] ❌ ERROR:', error.message);
-        console.error('[listSitePlugins] Stack:', error.stack);
-        return Response.json({ error: error.message, stack: error.stack }, { status: 500 });
+        return new Response(JSON.stringify({ success: true, plugins: data.plugins ?? data }), { status: 200, headers: corsHeaders });
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return new Response(JSON.stringify({ error: msg }), { status: 500, headers: corsHeaders });
     }
 });
