@@ -397,7 +397,7 @@ export default function TeamDetail() {
       return base44.entities.Notification.filter({
         recipient_type: "team",
         team_id: teamId
-      }, "-created_date", 20);
+      }, "-created_at", 20);
     },
     enabled: !!teamId,
     initialData: [],
@@ -410,7 +410,7 @@ export default function TeamDetail() {
       return base44.entities.Message.filter({
         recipient_type: "team",
         team_id: teamId
-      }, "-created_date", 20);
+      }, "-created_at", 20);
     },
     enabled: !!teamId,
     initialData: [],
@@ -814,7 +814,7 @@ export default function TeamDetail() {
                                     </>
                                   )}
                                   <p className="text-xs text-gray-400">
-                                    {format(new Date(notification.created_date), "d MMM HH:mm", { locale: nl })}
+                                    {format(new Date(notification.created_at), "d MMM HH:mm", { locale: nl })}
                                   </p>
                                 </div>
                               </div>

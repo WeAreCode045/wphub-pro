@@ -95,7 +95,7 @@ export default function FinanceSettings() {
 
   const { data: discounts = [] } = useQuery({
     queryKey: ['discount-codes'],
-    queryFn: () => base44.entities.DiscountCode.list("-created_date"),
+    queryFn: () => base44.entities.DiscountCode.list("-created_at"),
     enabled: !!user && user.role === "admin",
     initialData: [],
   });

@@ -62,7 +62,7 @@ export default function SubscriptionManager() {
     queryFn: async () => {
       if (!user || user.role !== 'admin') return [];
       
-      const subs = await base44.entities.UserSubscription.list("-created_date");
+      const subs = await base44.entities.UserSubscription.list("-created_at");
       return subs;
     },
     enabled: !!user && user.role === "admin",

@@ -58,7 +58,7 @@ export default function Messages() {
     queryKey: ['all-messages', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      return base44.entities.Message.list("-created_date");
+      return base44.entities.Message.list("-created_at");
     },
     enabled: !!user,
     initialData: [],
@@ -130,7 +130,7 @@ export default function Messages() {
             recipient_email: message.sender_email,
             recipient_type: message.recipient_type,
             team_id: message.team_id,
-            created_date: reply.created_at,
+            created_at: reply.created_at,
             priority: message.priority,
             category: message.category,
             is_read: message.is_read, // Use parent message read status
@@ -155,7 +155,7 @@ export default function Messages() {
     
     switch (sortBy) {
       case "date":
-        comparison = new Date(a.created_date) - new Date(b.created_date);
+        comparison = new Date(a.created_at) - new Date(b.created_at);
         break;
       case "sender":
         comparison = (a.sender_name || "").localeCompare(b.sender_name || "");
@@ -468,7 +468,7 @@ export default function Messages() {
                         {selectedFolder === "sent" ? `Aan: ${message.recipient_email || "Team"}` : `Van: ${message.sender_name}`}
                       </p>
                       <p className="text-xs text-gray-500 mb-2">
-                        {format(new Date(message.created_date), "d MMM HH:mm", { locale: nl })}
+                        {format(new Date(message.created_at), "d MMM HH:mm", { locale: nl })}
                       </p>
                       <p className="text-xs text-gray-600 line-clamp-2">
                         {message.message}
@@ -518,7 +518,7 @@ export default function Messages() {
                       </div>
                       <span>•</span>
                       <span>
-                        {format(new Date(messageThread.original.created_date), "d MMMM yyyy HH:mm", { locale: nl })}
+                        {format(new Date(messageThread.original.created_at), "d MMMM yyyy HH:mm", { locale: nl })}
                       </span>
                     </div>
                   </div>

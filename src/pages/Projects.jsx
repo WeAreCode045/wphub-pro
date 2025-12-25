@@ -106,7 +106,7 @@ export default function Projects() {
       const teamIds = userTeams.map(t => t.id);
       if (teamIds.length === 0) return []; // Only show projects associated with a team the user is part of.
       
-      const allProjects = await base44.entities.Project.list("-created_date"); // Filter by created_date as per outline
+      const allProjects = await base44.entities.Project.list("-created_at"); // Filter by created_at as per outline
       const userProjects = allProjects.filter(p => teamIds.includes(p.team_id));
       
       return userProjects;

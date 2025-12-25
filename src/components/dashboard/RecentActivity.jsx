@@ -65,7 +65,7 @@ export default function RecentActivity({ activities }) {
                     </p>
                     <span className="text-xs text-gray-400">•</span>
                     <p className="text-xs text-gray-400">
-                      {format(new Date(activity.created_date), "d MMM yyyy HH:mm", { locale: nl })}
+                      {format(new Date(activity.created_at), "d MMM yyyy HH:mm", { locale: nl })}
                     </p>
                   </div>
                 </div>

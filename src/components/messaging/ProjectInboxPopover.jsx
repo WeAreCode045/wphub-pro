@@ -51,7 +51,7 @@ export default function ProjectInboxPopover({
       if (!project?.inbox_id) return [];
       return base44.entities.Message.filter({
         to_mailbox_id: project.inbox_id
-      }, "-created_date");
+      }, "-created_at");
     },
     enabled: !!project?.inbox_id && open,
     initialData: [],
@@ -109,7 +109,7 @@ export default function ProjectInboxPopover({
 
   const threads = Object.entries(threadMap).map(([threadId, msgs]) => {
     const sortedMessages = msgs.sort((a, b) => 
-      new Date(b.created_date) - new Date(a.created_date)
+      new Date(b.created_at) - new Date(a.created_at)
     );
     return {
       threadId,
@@ -121,7 +121,7 @@ export default function ProjectInboxPopover({
   });
 
   const sortedThreads = [...threads].sort((a, b) => 
-    new Date(b.latestMessage.created_date) - new Date(a.latestMessage.created_date)
+    new Date(b.latestMessage.created_at) - new Date(a.latestMessage.created_at)
   );
 
   const getInitials = (name) => {
@@ -206,7 +206,7 @@ export default function ProjectInboxPopover({
                                 {msg.message.split('\n\n--- Origineel bericht ---')[0]}
                               </p>
                               <p className="text-xs text-gray-400 mt-1">
-                                {format(new Date(msg.created_date), "d MMM HH:mm", { locale: nl })}
+                                {format(new Date(msg.created_at), "d MMM HH:mm", { locale: nl })}
                               </p>
                             </div>
                             {!msg.is_read && (
@@ -240,7 +240,7 @@ export default function ProjectInboxPopover({
             <ScrollArea className="h-[400px]">
               <div className="p-4 space-y-4">
                 {selectedThread.messages
-                  .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+                  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                   .map((msg, idx) => {
                     const isFirstMessage = idx === selectedThread.messages.length - 1;
                     return (
@@ -267,7 +267,7 @@ export default function ProjectInboxPopover({
                               </div>
                               <p className="text-xs text-gray-500">{msg.sender_email}</p>
                               <p className="text-xs text-gray-400">
-                                {format(new Date(msg.created_date), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
+                                {format(new Date(msg.created_at), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
                               </p>
                             </div>
                           </div>

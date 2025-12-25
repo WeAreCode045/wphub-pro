@@ -67,10 +67,11 @@ export default function SiteSettings() {
     initialData: []
   });
 
-  const { data: connectors = [] } = useQuery({
+  const { data: connectors = [], refetch: refetchConnectors } = useQuery({
     queryKey: ['connectors'],
-    queryFn: () => base44.entities.Connector.list("-created_date"),
-    initialData: []
+    queryFn: () => base44.entities.Connector.list("-created_at"),
+    initialData: [],
+    staleTime: 0
   });
 
   // Load general settings when data is fetched
@@ -832,7 +833,7 @@ export default function SiteSettings() {
                               </div>
                               <p className="text-sm text-gray-600 mb-2">{connector.description}</p>
                               <p className="text-xs text-gray-500">
-                                Aangemaakt op {format(new Date(connector.created_date), "d MMM yyyy HH:mm", { locale: nl })}
+                                Aangemaakt op {format(new Date(connector.created_at), "d MMM yyyy HH:mm", { locale: nl })}
                               </p>
                             </div>
                             <div className="flex gap-2">

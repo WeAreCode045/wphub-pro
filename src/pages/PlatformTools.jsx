@@ -74,7 +74,7 @@ export default function PlatformTools() {
     queryFn: async () => {
       if (!user || user.role !== 'admin') return [];
       // Custom caching logic removed, relying on react-query's default caching
-      const conns = await base44.entities.Connector.list("-created_date");
+      const conns = await base44.entities.Connector.list("-created_at");
       return conns;
     },
     enabled: !!user && user.role === "admin",
@@ -756,7 +756,7 @@ export default function PlatformTools() {
                             <div className="flex-grow">
                               <span className="font-medium text-gray-900">Versie {connector.version}</span>
                               <p className="text-xs text-gray-500">
-                                {new Date(connector.created_date).toLocaleString()}
+                                {new Date(connector.created_at).toLocaleString()}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">

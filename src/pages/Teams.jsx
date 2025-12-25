@@ -55,7 +55,7 @@ export default function Teams() {
     queryFn: async () => {
       if (!user) return [];
       
-      const allTeams = await base44.entities.Team.list("-created_date");
+      const allTeams = await base44.entities.Team.list("-created_at");
       const userTeams = allTeams.filter(team => 
         team.owner_id === user.id || 
         team.members?.some(m => m.user_id === user.id && m.status === "active")

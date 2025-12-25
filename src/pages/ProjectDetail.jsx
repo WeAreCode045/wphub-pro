@@ -153,7 +153,7 @@ export default function ProjectDetail() {
       if (!projectId || !project?.inbox_id) return [];
       const messages = await base44.entities.Message.filter({
         to_mailbox_id: project.inbox_id
-      }, "-created_date", 20); // Fetch top 20 latest messages
+      }, "-created_at", 20); // Fetch top 20 latest messages
       return messages;
     },
     enabled: !!projectId && !!project?.inbox_id,

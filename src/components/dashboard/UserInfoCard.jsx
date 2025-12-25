@@ -52,7 +52,7 @@ export default function UserInfoCard({ user }) {
 
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <User className="w-3.5 h-3.5" />
-              <span>Lid sinds {new Date(user.created_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}</span>
+              <span>Lid sinds {new Date(user.created_at).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}</span>
             </div>
           </div>
         </div>

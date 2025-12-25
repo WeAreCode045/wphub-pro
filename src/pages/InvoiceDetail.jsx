@@ -307,7 +307,7 @@ export default function InvoiceDetail() {
                     Factuurdatum
                   </p>
                   <p className="font-medium text-gray-900">
-                    {format(new Date(invoice.created_date), "d MMMM yyyy", { locale: nl })}
+                    {format(new Date(invoice.created_at), "d MMMM yyyy", { locale: nl })}
                   </p>
                 </div>
                 <div>

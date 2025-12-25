@@ -270,7 +270,7 @@ export default function UserManager() {
         )}
 
         <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-          Aangemaakt: {format(new Date(targetUser.created_date), "d MMM yyyy", { locale: nl })}
+          Aangemaakt: {format(new Date(targetUser.created_at), "d MMM yyyy", { locale: nl })}
         </div>
 
         <div className="flex gap-2 pt-3 border-t border-gray-100">

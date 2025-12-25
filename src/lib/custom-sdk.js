@@ -24,7 +24,7 @@ export class CustomEntity {
    */
   mapFieldName(field) {
     const fieldMappings = {
-      created_date: "created_at",
+      created_at: "created_at",
       updated_date: "updated_at",
       // Add any other field mappings as needed
     };
@@ -56,7 +56,7 @@ export class CustomEntity {
     if (!data) return data;
 
     const reverseFieldMappings = {
-      created_at: "created_date",
+      created_at: "created_at",
       updated_at: "updated_date",
     };
 

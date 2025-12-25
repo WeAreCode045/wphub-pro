@@ -36,7 +36,7 @@ export default function AdminNotifications() {
     queryFn: async () => {
       if (!user || user.role !== 'admin') return [];
       
-      const notifs = await base44.entities.Notification.list("-created_date", 100);
+      const notifs = await base44.entities.Notification.list("-created_at", 100);
       return notifs;
     },
     enabled: !!user && user.role === "admin", // Only run query if user is admin
@@ -309,7 +309,7 @@ export default function AdminNotifications() {
                         </div>
                         <p className="text-sm text-gray-700 line-clamp-2 mb-1">{notif.message}</p>
                         <p className="text-xs text-gray-500">
-                          Verzonden op: {format(new Date(notif.created_date), "PPP p", { locale: nl })}
+                          Verzonden op: {format(new Date(notif.created_at), "PPP p", { locale: nl })}
                         </p>
                       </div>
                       <Button

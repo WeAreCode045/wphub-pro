@@ -45,11 +45,11 @@ export default function AdminDashboard() {
       if (!user || user.role !== 'admin') return null;
 
       const [users, plugins, sites, subscriptions, activities] = await Promise.all([
-        base44.entities.User.list("-created_date", 100),
+        base44.entities.User.list("-created_at", 100),
         base44.entities.Plugin.list("-updated_date", 100),
         base44.entities.Site.list("-updated_date", 100),
-        base44.entities.UserSubscription.list("-created_date", 100),
-        base44.entities.ActivityLog.list("-created_date", 50)
+        base44.entities.UserSubscription.list("-created_at", 100),
+        base44.entities.ActivityLog.list("-created_at", 50)
       ]);
 
       const activeSubscriptions = subscriptions.filter(s => s.status === "active" || s.status === "trialing");
@@ -57,8 +57,8 @@ export default function AdminDashboard() {
 
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const newUsersThisMonth = users.filter(u => new Date(u.created_date) > thirtyDaysAgo).length;
-      const newSubscriptionsThisMonth = subscriptions.filter(s => new Date(s.created_date) > thirtyDaysAgo).length;
+      const newUsersThisMonth = users.filter(u => new Date(u.created_at) > thirtyDaysAgo).length;
+      const newSubscriptionsThisMonth = subscriptions.filter(s => new Date(s.created_at) > thirtyDaysAgo).length;
 
       return {
         users: {
@@ -287,7 +287,7 @@ export default function AdminDashboard() {
                         <p className="text-xs text-gray-600">{activity.user_email}</p>
                         <span className="text-xs text-gray-400">•</span>
                         <p className="text-xs text-gray-400">
-                          {format(new Date(activity.created_date), "d MMM HH:mm", { locale: nl })}
+                          {format(new Date(activity.created_at), "d MMM HH:mm", { locale: nl })}
                         </p>
                       </div>
                     </div>

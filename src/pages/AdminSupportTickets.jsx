@@ -60,7 +60,7 @@ export default function AdminSupportTickets() {
   const { data: allTickets = [], isLoading } = useQuery({
     queryKey: ['all-support-tickets'],
     queryFn: async () => {
-      return base44.entities.SupportTicket.list("-created_date");
+      return base44.entities.SupportTicket.list("-created_at");
     },
     initialData: [],
   });
@@ -322,7 +322,7 @@ export default function AdminSupportTickets() {
                             <User className="w-3 h-3" />
                             <span>{ticket.submitter_name}</span>
                             <span>•</span>
-                            <span>{format(new Date(ticket.created_date), "d MMM yyyy HH:mm", { locale: nl })}</span>
+                            <span>{format(new Date(ticket.created_at), "d MMM yyyy HH:mm", { locale: nl })}</span>
                             {ticket.responses && ticket.responses.length > 0 && (
                               <>
                                 <span>•</span>
@@ -416,7 +416,7 @@ export default function AdminSupportTickets() {
                     <div className="flex items-center gap-2 text-xs text-gray-500 mt-3 pt-3 border-t border-purple-200">
                       <Badge variant="outline">{getCategoryLabel(selectedTicket.category)}</Badge>
                       <span className="ml-auto">
-                        {format(new Date(selectedTicket.created_date), "d MMM yyyy HH:mm", { locale: nl })}
+                        {format(new Date(selectedTicket.created_at), "d MMM yyyy HH:mm", { locale: nl })}
                       </span>
                     </div>
                   </CardContent>

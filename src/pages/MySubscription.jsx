@@ -156,7 +156,7 @@ export default function MySubscription() {
     queryKey: ['my-invoices', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      return base44.entities.Invoice.filter({ user_id: user.id }, "-created_date");
+      return base44.entities.Invoice.filter({ user_id: user.id }, "-created_at");
     },
     enabled: !!user,
     initialData: [],
@@ -685,7 +685,7 @@ export default function MySubscription() {
                             <p className="font-semibold text-gray-900">{invoice.invoice_number}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <p className="text-sm text-gray-600">
-                                {format(new Date(invoice.created_date), "d MMM yyyy", { locale: nl })}
+                                {format(new Date(invoice.created_at), "d MMM yyyy", { locale: nl })}
                               </p>
                               <span className="text-gray-400">•</span>
                               <Badge className={

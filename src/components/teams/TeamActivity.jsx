@@ -14,7 +14,7 @@ export default function TeamActivity({ teamId }) {
       return await base44.entities.ActivityLog.filter({ 
         entity_type: "team",
         entity_id: teamId 
-      }, "-created_date", 10);
+      }, "-created_at", 10);
     },
     enabled: !!teamId,
     initialData: [],
@@ -77,7 +77,7 @@ export default function TeamActivity({ teamId }) {
                     </p>
                     <span className="text-xs text-gray-400">•</span>
                     <p className="text-xs text-gray-400">
-                      {format(new Date(activity.created_date), "d MMM HH:mm", { locale: nl })}
+                      {format(new Date(activity.created_at), "d MMM HH:mm", { locale: nl })}
                     </p>
                   </div>
                 </div>

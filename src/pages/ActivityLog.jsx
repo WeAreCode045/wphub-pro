@@ -26,7 +26,7 @@ export default function ActivityLog() {
     queryKey: ['activities', user?.email],
     queryFn: async () => {
       if (!user) return [];
-      const allActivities = await base44.entities.ActivityLog.filter({ user_email: user.email }, "-created_date", 100);
+      const allActivities = await base44.entities.ActivityLog.filter({ user_email: user.email }, "-created_at", 100);
       // Filter out connector activities (admin-only activities)
       return allActivities.filter(activity => activity.entity_type !== "connector");
     },
@@ -93,7 +93,7 @@ export default function ActivityLog() {
               <p className="text-sm text-gray-600 mt-1">{activity.details}</p>
             )}
             <p className="text-xs text-gray-500 mt-2">
-              {format(new Date(activity.created_date), "d MMM yyyy HH:mm", { locale: nl })}
+              {format(new Date(activity.created_at), "d MMM yyyy HH:mm", { locale: nl })}
             </p>
           </div>
           <Badge className={getEntityColor(activity.entity_type)}>

@@ -57,7 +57,7 @@ export default function ProfileSubscriptionCard({ user }) {
 
             <div className="flex items-center gap-1.5 text-xs text-white/70">
               <User className="w-3 h-3" />
-              <span>Lid sinds {new Date(user.created_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}</span>
+              <span>Lid sinds {new Date(user.created_at).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}</span>
             </div>
           </div>
         </div>

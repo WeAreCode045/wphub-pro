@@ -45,7 +45,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
     queryKey: ['notifications', userId],
     queryFn: async () => {
       if (!userId) return [];
-      return base44.entities.Notification.filter({ recipient_id: userId }, "-created_date");
+      return base44.entities.Notification.filter({ recipient_id: userId }, "-created_at");
     },
     enabled: !!userId,
     initialData: [],
@@ -56,7 +56,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
     queryKey: ['sent-notifications', userEmail],
     queryFn: async () => {
       if (!userEmail) return [];
-      const allNotifications = await base44.entities.Notification.list("-created_date");
+      const allNotifications = await base44.entities.Notification.list("-created_at");
       return allNotifications.filter(n => n.created_by === userEmail);
     },
     enabled: !!userEmail,
@@ -403,7 +403,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
         )}
         
         <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-          <span>{format(new Date(notification.created_date), "d MMM yyyy HH:mm", { locale: nl })}</span>
+          <span>{format(new Date(notification.created_at), "d MMM yyyy HH:mm", { locale: nl })}</span>
         </div>
 
         {hasReplies && (

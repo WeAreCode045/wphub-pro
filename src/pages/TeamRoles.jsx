@@ -67,7 +67,7 @@ export default function TeamRoles() {
 
   const { data: teamRoles = [] } = useQuery({
     queryKey: ['team-roles', teamId],
-    queryFn: () => base44.entities.TeamRole.filter({ team_id: teamId }, "-created_date"),
+    queryFn: () => base44.entities.TeamRole.filter({ team_id: teamId }, "-created_at"),
     enabled: !!teamId,
     initialData: [],
   });

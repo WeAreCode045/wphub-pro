@@ -57,7 +57,7 @@ export default function RoleManager() {
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
-    queryFn: () => base44.entities.Role.list("-created_date"),
+    queryFn: () => base44.entities.Role.list("-created_at"),
     initialData: [],
   });
 

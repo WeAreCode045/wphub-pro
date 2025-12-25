@@ -82,7 +82,7 @@ export default function AdminMessages() {
       
       const messages = await base44.entities.Message.filter({
         to_mailbox_id: adminGlobalInboxId
-      }, "-created_date");
+      }, "-created_at");
       
       return messages;
     },
@@ -173,7 +173,7 @@ export default function AdminMessages() {
 
   const threads = Object.entries(threadMap).map(([threadId, messages]) => {
     const sortedMessages = messages.sort((a, b) => 
-      new Date(b.created_date) - new Date(a.created_date)
+      new Date(b.created_at) - new Date(a.created_at)
     );
     return {
       threadId,
@@ -187,9 +187,9 @@ export default function AdminMessages() {
   const sortedThreads = [...threads].sort((a, b) => {
     switch (sortBy) {
       case "date-desc":
-        return new Date(b.latestMessage.created_date) - new Date(a.latestMessage.created_date);
+        return new Date(b.latestMessage.created_at) - new Date(a.latestMessage.created_at);
       case "date-asc":
-        return new Date(a.latestMessage.created_date) - new Date(a.latestMessage.created_date); // Bug: This should be `new Date(a.latestMessage.created_date) - new Date(b.latestMessage.created_date);`
+        return new Date(a.latestMessage.created_at) - new Date(a.latestMessage.created_at); // Bug: This should be `new Date(a.latestMessage.created_at) - new Date(b.latestMessage.created_at);`
       case "sender":
         return (a.latestMessage.sender_name || "").localeCompare(b.latestMessage.sender_name || "");
       case "priority":
@@ -422,7 +422,7 @@ export default function AdminMessages() {
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                               <p className="text-xs text-gray-400">
-                                {format(new Date(msg.created_date), "d MMM HH:mm", { locale: nl })}
+                                {format(new Date(msg.created_at), "d MMM HH:mm", { locale: nl })}
                               </p>
                               <Badge className={`${getPriorityColor(msg.priority)} text-xs`}>
                                 {msg.priority}
@@ -449,7 +449,7 @@ export default function AdminMessages() {
                   <div className="space-y-4 mb-6 max-h-[calc(100vh-400px)] overflow-y-auto">
                     {selectedThread.messages
                       .slice() // Use slice to create a shallow copy before sorting, preventing direct mutation of state.
-                      .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+                      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                       .map((msg, idx) => {
                         const isFirstMessage = idx === selectedThread.messages.length - 1;
                         return (
@@ -476,7 +476,7 @@ export default function AdminMessages() {
                                   </div>
                                   <p className="text-xs text-gray-500">{msg.sender_email}</p>
                                   <p className="text-xs text-gray-400">
-                                    {format(new Date(msg.created_date), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
+                                    {format(new Date(msg.created_at), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
                                   </p>
                                 </div>
                               </div>

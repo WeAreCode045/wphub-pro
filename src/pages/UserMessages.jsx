@@ -73,7 +73,7 @@ export default function UserMessages() {
     queryKey: ['user-messages', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const messages = await base44.entities.Message.list("-created_date");
+      const messages = await base44.entities.Message.list("-created_at");
       return messages;
     },
     enabled: !!user,
@@ -176,7 +176,7 @@ export default function UserMessages() {
   // Get latest message per thread for list display
   const threads = Object.entries(threadMap).map(([threadId, messages]) => {
     const sortedMessages = messages.sort((a, b) => 
-      new Date(b.created_date) - new Date(a.created_date)
+      new Date(b.created_at) - new Date(a.created_at)
     );
     return {
       threadId,
@@ -190,9 +190,9 @@ export default function UserMessages() {
   const sortedThreads = [...threads].sort((a, b) => {
     switch (sortBy) {
       case "date-desc":
-        return new Date(b.latestMessage.created_date) - new Date(a.latestMessage.created_date);
+        return new Date(b.latestMessage.created_at) - new Date(a.latestMessage.created_at);
       case "date-asc":
-        return new Date(a.latestMessage.created_date) - new Date(b.latestMessage.created_date);
+        return new Date(a.latestMessage.created_at) - new Date(b.latestMessage.created_at);
       case "sender":
         return (a.latestMessage.sender_name || "").localeCompare(b.latestMessage.sender_name || "");
       case "priority":
@@ -427,7 +427,7 @@ export default function UserMessages() {
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                               <p className="text-xs text-gray-400">
-                                {format(new Date(msg.created_date), "d MMM HH:mm", { locale: nl })}
+                                {format(new Date(msg.created_at), "d MMM HH:mm", { locale: nl })}
                               </p>
                               <Badge className={`${getPriorityColor(msg.priority)} text-xs`}>
                                 {msg.priority}
@@ -456,7 +456,7 @@ export default function UserMessages() {
                   {/* Thread Messages - Sort newest first for display */}
                   <div className="space-y-4 mb-6 max-h-[calc(100vh-400px)] overflow-y-auto">
                     {selectedThread.messages
-                      .sort((a, b) => new Date(b.created_date) - new Date(a.created_date)) // Changed to sort newest first
+                      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)) // Changed to sort newest first
                       .map((msg, idx) => {
                         // The chronologically first message will be the last in the newest-first sorted array
                         const isFirstMessage = idx === selectedThread.messages.length - 1; 
@@ -484,7 +484,7 @@ export default function UserMessages() {
                                   </div>
                                   <p className="text-xs text-gray-500">{msg.sender_email}</p>
                                   <p className="text-xs text-gray-400">
-                                    {format(new Date(msg.created_date), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
+                                    {format(new Date(msg.created_at), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
                                   </p>
                                 </div>
                               </div>

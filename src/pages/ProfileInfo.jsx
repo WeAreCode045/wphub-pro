@@ -354,7 +354,7 @@ export default function ProfileInfo() {
                   <Label className="text-sm text-gray-600 mb-1">Lid sinds</Label>
                   <div className="flex items-center gap-2 text-sm text-gray-900">
                     <Calendar className="w-4 h-4" />
-                    {format(new Date(user.created_date), "d MMMM yyyy", { locale: nl })}
+                    {format(new Date(user.created_at), "d MMMM yyyy", { locale: nl })}
                   </div>
                 </div>
               </div>

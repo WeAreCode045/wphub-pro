@@ -304,7 +304,7 @@ export default function Layout({ children, currentPageName }) {
     queryKey: ['header-notifications', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      return base44.entities.Notification.filter({ recipient_id: user.id }, "-created_date", 5);
+      return base44.entities.Notification.filter({ recipient_id: user.id }, "-created_at", 5);
     },
     enabled: !!user && notificationsOpen,
     staleTime: 0,
@@ -315,7 +315,7 @@ export default function Layout({ children, currentPageName }) {
     queryKey: ['header-activities', user?.email],
     queryFn: async () => {
       if (!user) return [];
-      const allActivities = await base44.entities.ActivityLog.filter({ user_email: user.email }, "-created_date", 5);
+      const allActivities = await base44.entities.ActivityLog.filter({ user_email: user.email }, "-created_at", 5);
       return allActivities.filter(activity => activity.entity_type !== "connector");
     },
     enabled: !!user && activityOpen,
@@ -334,7 +334,7 @@ export default function Layout({ children, currentPageName }) {
       // Only fetch messages for user personal inbox - no admin inbox, no team inboxes
       const messages = await base44.entities.Message.filter({
         to_mailbox_id: userInboxId
-      }, "-created_date", 5);
+      }, "-created_at", 5);
 
       return messages;
     },
@@ -946,7 +946,7 @@ export default function Layout({ children, currentPageName }) {
                                     <p className="text-xs text-gray-600 mt-1">{activity.details}</p>
                                   )}
                                   <p className="text-xs text-gray-400 mt-1">
-                                    {format(new Date(activity.created_date), "d MMM HH:mm", { locale: nl })}
+                                    {format(new Date(activity.created_at), "d MMM HH:mm", { locale: nl })}
                                   </p>
                                 </div>
                               ))}
@@ -1000,7 +1000,7 @@ export default function Layout({ children, currentPageName }) {
                                 <p className="text-sm font-medium text-gray-900">{message.subject}</p>
                                 <p className="text-xs text-gray-600 mt-1 line-clamp-2">{message.message}</p>
                                 <p className="text-xs text-gray-400 mt-1">
-                                  {format(new Date(message.created_date), "d MMM HH:mm", { locale: nl })}
+                                  {format(new Date(message.created_at), "d MMM HH:mm", { locale: nl })}
                                 </p>
                               </div>
                             ))}
@@ -1055,7 +1055,7 @@ export default function Layout({ children, currentPageName }) {
                                 <p className="text-sm font-medium text-gray-900">{notification.title}</p>
                                 <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
                                 <p className="text-xs text-gray-400 mt-1">
-                                  {format(new Date(notification.created_date), "d MMM HH:mm", { locale: nl })}
+                                  {format(new Date(notification.created_at), "d MMM HH:mm", { locale: nl })}
                                 </p>
                                 {notification.type === "team_invite" && !notification.is_read && (
                                   <div className="flex gap-2 mt-2">

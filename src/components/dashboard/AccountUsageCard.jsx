@@ -27,7 +27,7 @@ export default function AccountUsageCard({ userId }) {
       const subs = await base44.entities.UserSubscription.filter({
         user_id: userId,
         status: ['active', 'trialing']
-      }, "-created_date", 1);
+      }, "-created_at", 1);
       return subs.length > 0 ? subs[0] : null;
     },
     enabled: !!userId,

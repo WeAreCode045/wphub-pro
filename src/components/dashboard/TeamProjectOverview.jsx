@@ -26,7 +26,7 @@ export default function TeamProjectOverview({ userId }) {
     queryKey: ['dashboard-teams', userId],
     queryFn: async () => {
       if (!userId) return [];
-      const allTeams = await base44.entities.Team.list("-created_date");
+      const allTeams = await base44.entities.Team.list("-created_at");
       return allTeams.filter(team => 
         team.owner_id === userId || 
         team.members?.some(m => m.user_id === userId && m.status === "active")
@@ -43,7 +43,7 @@ export default function TeamProjectOverview({ userId }) {
     queryFn: async () => {
       if (!userId || userTeams.length === 0) return [];
       const teamIds = userTeams.map(t => t.id);
-      const allProjects = await base44.entities.Project.list("-created_date");
+      const allProjects = await base44.entities.Project.list("-created_at");
       return allProjects.filter(p => teamIds.includes(p.team_id)).slice(0, 5);
     },
     enabled: !!userId && userTeams.length > 0,

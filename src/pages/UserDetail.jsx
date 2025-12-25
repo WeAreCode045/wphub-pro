@@ -134,7 +134,7 @@ export default function UserDetail() {
     queryKey: ['notifications', userId],
     queryFn: async () => {
       if (!userId) return [];
-      return base44.entities.Notification.filter({ recipient_id: userId }, "-created_date", 10);
+      return base44.entities.Notification.filter({ recipient_id: userId }, "-created_at", 10);
     },
     enabled: !!userId,
     initialData: [],
@@ -480,7 +480,7 @@ export default function UserDetail() {
                       <div>
                         <p className="text-xs text-gray-500">Lid sinds</p>
                         <p className="text-sm font-medium text-gray-900">
-                          {format(new Date(targetUser.created_date), "d MMMM yyyy", { locale: nl })}
+                          {format(new Date(targetUser.created_at), "d MMMM yyyy", { locale: nl })}
                         </p>
                       </div>
                     </div>
@@ -514,7 +514,7 @@ export default function UserDetail() {
                           </div>
                           <p className="text-xs text-gray-600 mb-2">{notif.message}</p>
                           <p className="text-xs text-gray-400">
-                            {format(new Date(notif.created_date), "d MMM yyyy HH:mm", { locale: nl })}
+                            {format(new Date(notif.created_at), "d MMM yyyy HH:mm", { locale: nl })}
                           </p>
                         </div>
                       ))}

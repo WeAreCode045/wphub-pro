@@ -227,7 +227,7 @@ export default function Support() {
       if (!user) return [];
       return base44.entities.SupportTicket.filter(
         { submitter_id: user.id },
-        "-created_date"
+        "-created_at"
       );
     },
     enabled: !!user,
@@ -487,7 +487,7 @@ export default function Support() {
                           </div>
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <span>{getCategoryLabel(ticket.category)}</span>
-                            <span>{format(new Date(ticket.created_date), "d MMM yyyy", { locale: nl })}</span>
+                            <span>{format(new Date(ticket.created_at), "d MMM yyyy", { locale: nl })}</span>
                           </div>
                         </CardContent>
                       </Card>
@@ -626,7 +626,7 @@ export default function Support() {
                       </Badge>
                       <Badge variant="outline">{getCategoryLabel(selectedTicket.category)}</Badge>
                       <span className="ml-auto">
-                        {format(new Date(selectedTicket.created_date), "d MMM yyyy HH:mm", { locale: nl })}
+                        {format(new Date(selectedTicket.created_at), "d MMM yyyy HH:mm", { locale: nl })}
                       </span>
                     </div>
                   </CardContent>
