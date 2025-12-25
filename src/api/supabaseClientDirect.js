@@ -535,8 +535,12 @@ const functions = {
     let data;
     try { data = await res.json(); } catch (e) { data = null; }
     if (!res.ok) {
-      const e = Object.assign(new Error(`Function ${name} invoke failed: ${res.status}`), { response: data });
-      throw e;
+      const message = data?.error ? `Function ${name} failed: ${data.error}` : `Function ${name} invoke failed: ${res.status}`;
+      const err = new Error(message);
+      err.data = data;
+      err.response = data;
+      err.status = res.status;
+      throw err;
     }
     return { data };
   }
