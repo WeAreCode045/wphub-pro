@@ -117,7 +117,13 @@ class WPPluginHubConnector {
         $plugin_file = null;
         
         foreach ($plugins as $file => $data) {
-            if (dirname($file) === $plugin_slug || $file === $plugin_slug) {
+            // Calculate slug the same way as in handle_get_installed_plugins
+            $slug = dirname($file);
+            if ($slug === '.') {
+                $slug = basename($file, '.php');
+            }
+            
+            if ($slug === $plugin_slug || $file === $plugin_slug) {
                 $plugin_file = $file;
                 break;
             }
@@ -160,7 +166,13 @@ class WPPluginHubConnector {
         $plugin_file = null;
         
         foreach ($plugins as $file => $data) {
-            if (dirname($file) === $plugin_slug || $file === $plugin_slug) {
+            // Calculate slug the same way as in handle_get_installed_plugins
+            $slug = dirname($file);
+            if ($slug === '.') {
+                $slug = basename($file, '.php');
+            }
+            
+            if ($slug === $plugin_slug || $file === $plugin_slug) {
                 $plugin_file = $file;
                 break;
             }
@@ -209,9 +221,17 @@ class WPPluginHubConnector {
         
         foreach ($plugins as $plugin_file => $plugin_data) {
             $is_active = is_plugin_active($plugin_file);
+            
+            // Calculate slug: use dirname for subfolder plugins, basename for root plugins
+            $slug = dirname($plugin_file);
+            if ($slug === '.') {
+                // Plugin in root directory, use filename without extension
+                $slug = basename($plugin_file, '.php');
+            }
+            
             $installed[] = array(
                 'name' => $plugin_data['Name'],
-                'slug' => dirname($plugin_file),
+                'slug' => $slug,
                 'version' => $plugin_data['Version'],
                 'status' => $is_active ? 'active' : 'inactive',
                 'file' => $plugin_file,
