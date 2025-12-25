@@ -18,16 +18,14 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
-    const body = await req.json();
-    const { version, plugin_code, file_url, description } = body;
-    if (!version) {
-      return new Response(JSON.stringify({ error: "Missing required parameter: version" }), { status: 400, headers: corsHeaders });
-    }
+    const body = await req.json().catch(() => ({}));
+    // Default version if not provided to avoid 400s on empty payloads
+    const version = body.version || `v${new Date().toISOString().replace(/[:.]/g, '-')}`;
 
-    // Allow plugin_code/file_url to be optional; fall back to empty strings so the insert succeeds
-    const safePluginCode = plugin_code ?? '';
-    const safeFileUrl = file_url ?? '';
-    const safeDescription = description ?? '';
+    // Allow plugin_code/file_url/description to be optional; fall back to empty strings so the insert succeeds
+    const safePluginCode = body.plugin_code ?? '';
+    const safeFileUrl = body.file_url ?? '';
+    const safeDescription = body.description ?? '';
 
     // Insert connector plugin
     const { data: connector, error: connectorError } = await supabase.from("connectors").insert({
