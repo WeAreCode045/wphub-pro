@@ -459,7 +459,7 @@ export default function SiteDetail() {
     onSuccess: () => {
       refetchWpPlugins();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       // Try to extract detailed error message from API response
       const errorData = error?.data || {};
       const errorMsg = errorData.error || error.message || 'Onbekende fout';
