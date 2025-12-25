@@ -43,6 +43,7 @@ class WP_Plugin_Hub_Connector {
     $this->site_id = get_option('wp_plugin_hub_site_id', '');
         
     add_action('admin_menu', array($this, 'add_admin_menu'));
+    add_action('admin_enqueue_scripts', array($this, 'admin_styles'));
     add_action('admin_init', array($this, 'register_settings'));
     add_action('rest_api_init', array($this, 'register_rest_routes'));
         
@@ -68,6 +69,45 @@ class WP_Plugin_Hub_Connector {
       'display'  => __('Every 5 Minutes', 'wp-plugin-hub-connector')
     );
     return $schedules;
+  }
+
+  public function add_admin_menu() {
+    add_menu_page(
+      'WP Plugin Hub',
+      'Plugin Hub',
+      'manage_options',
+      'wp-plugin-hub',
+      array($this, 'admin_page'),
+      'dashicons-cloud',
+      65
+    );
+  }
+
+  public function admin_styles($hook) {
+    if ($hook !== 'toplevel_page_wp-plugin-hub') {
+      return;
+    }
+    wp_add_inline_style('wp-admin', '
+      .wphub-wrap { max-width: 800px; margin: 20px auto; }
+      .wphub-card { background: #fff; border: 1px solid #ccd0d4; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+      .wphub-card h2 { margin-top: 0; color: #1d2327; display: flex; align-items: center; gap: 10px; }
+      .wphub-card h2 .dashicons { color: #6366f1; }
+      .wphub-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+      .wphub-status.connected { background: #d1fae5; color: #065f46; }
+      .wphub-status.disconnected { background: #fee2e2; color: #991b1b; }
+      .wphub-info { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 16px; margin: 16px 0; }
+      .wphub-info p { margin: 0; color: #0369a1; }
+    ');
+  }
+
+  public function admin_page() {
+    echo '<div class="wrap wphub-wrap">';
+    echo '<div class="wphub-card">';
+    echo '<h2><span class="dashicons dashicons-cloud"></span> WP Plugin Hub Connector</h2>';
+    echo '<p style="color: #64748b;">Beheer je plugins en themes centraal via het WP Plugin Hub dashboard.</p>';
+    echo '<div class="wphub-info"><p><strong>Dashboard:</strong> <a href="' . esc_url($this->platform_url) . '" target="_blank">' . esc_html($this->platform_url) . '</a></p></div>';
+    echo '</div>';
+    echo '</div>';
   }
     
   public function register_rest_routes() {
@@ -109,8 +149,14 @@ class WP_Plugin_Hub_Connector {
     return $provided_key === $this->api_key;
   }
     
-  // (rest omitted)
+  public function register_settings() {
+    register_setting('wp_plugin_hub_group', 'wp_plugin_hub_api_key');
+    register_setting('wp_plugin_hub_group', 'wp_plugin_hub_site_id');
+  }
 }
+
+// Instantiate the connector to register hooks
+new WP_Plugin_Hub_Connector();
 ?>
 `;
 
