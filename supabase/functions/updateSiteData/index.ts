@@ -1,6 +1,16 @@
 import { createClientFromRequest } from '../base44Shim.js';
 
+const CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json"
+};
+
 Deno.serve(async (req) => {
+    if (req.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
