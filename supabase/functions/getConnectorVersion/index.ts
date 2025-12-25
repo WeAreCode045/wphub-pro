@@ -1,55 +1,82 @@
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
-Deno.serve(async (req) => {
+serve(async (req) => {
     const cors = handleCors(req);
     if (cors) return cors;
     try {
-        const supabase = createClient(Deno.env.get('SB_URL'), Deno.env.get('SB_SERVICE_ROLE_KEY'));
-        const { site_id } = await req.json();
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, serviceKey);
+        
+        const body = await req.json().catch(() => ({}));
+        const site_id = body.site_id;
+        
         if (!site_id) {
-            return Response.json({ error: 'Missing site_id' }, { status: 400, headers: corsHeaders });
+            return new Response(JSON.stringify({ error: 'Missing site_id' }), { status: 400, headers: corsHeaders });
         }
+        
         // Get site details
-        const { data: sites, error: siteError } = await supabase.from('sites').select('*').eq('id', site_id);
-        if (siteError || !sites || sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404, headers: corsHeaders });
+        const { data: site, error: siteError } = await supabase.from('sites').select('url, api_key').eq('id', site_id).single();
+        if (siteError || !site) {
+            return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: corsHeaders });
         }
-        const site = sites[0];
-        // Call connector to get installed plugins (includes connector itself)
-        const connectorUrl = `${site.url}/wp-json/wphub/v1/listPlugins`;
-        const response = await fetch(connectorUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ api_key: site.api_key })
+        
+        const site_url = (site.url || '').replace(/\/$/, '');
+        const api_key = site.api_key;
+        
+        if (!site_url || !api_key) {
+            return new Response(JSON.stringify({ error: 'Site missing URL or API key' }), { status: 400, headers: corsHeaders });
+        }
+        
+        // Get installed plugins to find the connector
+        const pluginsUrl = `${site_url}/wp-json/wp/v2/plugins`;
+        const pluginsRes = await fetch(pluginsUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${api_key}`
+            }
         });
-        if (!response.ok) {
-            return Response.json({ success: false, error: 'Failed to get plugins from site' }, { status: 500, headers: corsHeaders });
+        
+        let plugins: any[] = [];
+        if (pluginsRes.ok) {
+            const pluginsText = await pluginsRes.text();
+            try {
+                plugins = JSON.parse(pluginsText);
+            } catch { }
         }
-        const result = await response.json();
-        if (!result.success || !result.plugins) {
-            return Response.json({ success: false, error: 'Invalid response from connector' }, { status: 500, headers: corsHeaders });
-        }
-        // Find connector plugin in the list
-        const connectorPlugin = result.plugins.find(p => p.slug === 'wp-plugin-hub-connector' || p.name === 'WP Plugin Hub Connector');
+        
+        // Find connector plugin
+        const connectorPlugin = plugins.find((p: any) => 
+            p.plugin && (p.plugin.includes('wp-plugin-hub-connector') || p.name?.includes('WP Plugin Hub Connector'))
+        );
+        
         if (!connectorPlugin) {
-            return Response.json({ success: false, error: 'Connector plugin not found on site' }, { status: 404, headers: corsHeaders });
+            return new Response(JSON.stringify({ 
+                success: false, 
+                error: 'Connector plugin not found on site',
+                current_version: null,
+                latest_version: null,
+                update_available: false
+            }), { status: 200, headers: corsHeaders });
         }
+        
         // Get active connector version from settings
-        const { data: settings, error: settingsError } = await supabase.from('site_settings').select('*');
-        if (settingsError || !settings) {
-            return Response.json({ success: false, error: 'Failed to fetch settings' }, { status: 500, headers: corsHeaders });
-        }
-        const activeVersion = settings.find(s => s.setting_key === 'active_connector_version')?.setting_value;
-        return Response.json({
+        const { data: settings, error: settingsError } = await supabase.from('site_settings').select('*').eq('setting_key', 'active_connector_version').single().catch(() => ({ data: null }));
+        
+        const activeVersion = settings?.setting_value || null;
+        
+        return new Response(JSON.stringify({
             success: true,
-            current_version: connectorPlugin.version,
+            current_version: connectorPlugin.version || 'unknown',
             latest_version: activeVersion,
             update_available: activeVersion && connectorPlugin.version !== activeVersion
-        }, { headers: corsHeaders });
+        }), { status: 200, headers: corsHeaders });
     } catch (error) {
         const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
         console.error('[getConnectorVersion] ERROR:', message);
-        return Response.json({ success: false, error: message }, { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ success: false, error: message }), { status: 500, headers: corsHeaders });
     }
 });
