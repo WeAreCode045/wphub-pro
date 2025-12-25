@@ -1,43 +1,12 @@
-import { createClientFromRequest } from '../base44Shim.js';
-import Stripe from 'npm:stripe';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
-
-Deno.serve(async (req) => {
-  try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { new_plan_id, action } = await req.json();
-
-    if (!new_plan_id || !action) {
-      return Response.json({ 
-        error: 'Missing required parameters: new_plan_id and action' 
-      }, { status: 400 });
-    }
-
-    // Get current active subscription
-    const subscriptions = await base44.asServiceRole.entities.UserSubscription.filter({
-      user_id: user.id,
-      status: ['active', 'trialing']
-    });
-
-    if (subscriptions.length === 0) {
-      return Response.json({ 
-        error: 'No active subscription found' 
-      }, { status: 404 });
-    }
-
-    const currentSubscription = subscriptions[0];
-
-    // Manual subscriptions cannot be changed via Stripe
-    if (currentSubscription.is_manual) {
-      return Response.json({ 
-        error: 'Manual subscriptions must be changed by an administrator' 
+serve(async (req) => {
+  return new Response(
+    JSON.stringify({ error: "unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+});
       }, { status: 400 });
     }
 
@@ -341,8 +310,8 @@ Deno.serve(async (req) => {
     const { new_plan_id, action } = body;
     if (!new_plan_id || !action) return jsonResponse({ error: 'Missing required parameters: new_plan_id and action' }, 400);
 
-    const supa = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '') || '';
-    const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('VITE_SUPABASE_SERVICE_ROLE_KEY');
+    const supa = Deno.env.get('SB_URL')?.replace(/\/$/, '') || '';
+    const serviceKey = Deno.env.get('SB_SERVICE_ROLE_KEY');
 
     const subsRes = await fetch(`${supa}/rest/v1/user_subscriptions?user_id=eq.${encodeURIComponent(String(user.id))}&or=(status.eq.active,status.eq.trialing)`, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
     const subscriptions = subsRes.ok ? await subsRes.json() : [];

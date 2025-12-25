@@ -1,66 +1,64 @@
-import { authMeWithToken, extractBearerFromReq, jsonResponse } from '../_helpers.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req) => {
   try {
-    const token = extractBearerFromReq(req);
-    const caller = await authMeWithToken(token);
-    if (!caller) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-    // Check if caller is admin by fetching from users table
-    const supa = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '') || '';
-    const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    const adminRes = await fetch(`${supa}/rest/v1/users?id=eq.${encodeURIComponent(caller.id)}`, {
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
-    });
-    if (!adminRes.ok) return jsonResponse({ error: 'Failed to verify admin' }, 500);
-    const adminArr = await adminRes.json();
-    const admin = adminArr?.[0];
-    if (!admin || admin.role !== 'admin') return jsonResponse({ error: 'Admin access required' }, 403);
-
-    const { user_id, updates } = await req.json();
-    if (!user_id || !updates) return jsonResponse({ error: 'user_id and updates are required' }, 400);
-
-    // Validate updates - only allow certain fields
-    const allowedFields = ['full_name', 'avatar_url', 'company', 'phone', 'role', 'status', 'email_notifications', 'two_factor_enabled', 'disabled'];
-    const filteredUpdates: any = {};
-    for (const [key, value] of Object.entries(updates)) {
-      if (allowedFields.includes(key)) {
-        filteredUpdates[key] = value;
-      }
+    // Require authentication
+    const authHeader = req.headers.get("authorization") || "";
+    const jwt = authHeader.replace(/^Bearer /i, "");
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
-    if (Object.keys(filteredUpdates).length === 0) return jsonResponse({ error: 'No valid fields to update' }, 400);
+
+    // Supabase client (service role)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Parse request body
+    const body = await req.json();
+    const { user_id, updates, admin_email } = body;
+    if (!user_id || !updates || !admin_email) {
+      return new Response(JSON.stringify({ error: "Missing required parameters" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Update user
-    filteredUpdates.updated_at = new Date().toISOString();
-    const updateRes = await fetch(`${supa}/rest/v1/users?id=eq.${encodeURIComponent(user_id)}`, {
-      method: 'PATCH',
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify(filteredUpdates)
-    });
-    if (!updateRes.ok) {
-      const txt = await updateRes.text().catch(()=>'');
-      return jsonResponse({ error: `Failed to update user: ${txt}` }, 500);
+    const { data: updatedUser, error: updateError } = await supabase.from('User').update(updates).eq('id', user_id).select().single();
+    if (updateError || !updatedUser) {
+      return new Response(JSON.stringify({ error: `Failed to update user: ${updateError?.message || 'Unknown error'}` }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
-    const updatedUser = await updateRes.json();
 
     // Log activity
-    await fetch(`${supa}/rest/v1/activity_logs`, {
-      method: 'POST',
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_email: admin.email,
+    await supabase.from('ActivityLog').insert([
+      {
+        user_email: admin_email,
         action: `User updated: ${updatedUser.email}`,
         entity_type: 'user',
-        details: `Updated fields: ${Object.keys(filteredUpdates).join(', ')}`
-      })
-    });
+        entity_id: user_id,
+        details: `Updated fields: ${Object.keys(updates).join(', ')}`
+      }
+    ]);
 
-    return jsonResponse({ success: true, user: updatedUser });
-  } catch (err: any) {
-    console.error('updateUserAdmin error', err);
-    return jsonResponse({ success: false, error: err.message || String(err) }, 500);
+    return new Response(
+      JSON.stringify({ success: true, user: updatedUser }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    let errorMessage = "Failed to update user";
+    if (error && typeof error === "object" && "message" in error) {
+      errorMessage = (error as { message?: string }).message || errorMessage;
+    }
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 });
-
-export {};

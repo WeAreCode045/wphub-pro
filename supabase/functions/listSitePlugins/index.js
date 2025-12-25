@@ -1,43 +1,12 @@
-import { createClientFromRequest } from './base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const { site_id } = await req.json();
-
-        console.log('[listSitePlugins] === START ===');
-        console.log('[listSitePlugins] Site ID:', site_id);
-
-        if (!site_id) {
-            return Response.json({ error: 'Site ID is required' }, { status: 400 });
-        }
-
-        const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
-        
-        if (sites.length === 0) {
-            console.log('[listSitePlugins] Site not found');
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-
-        const site = sites[0];
-        console.log('[listSitePlugins] Site:', site.name, site.url);
-
-        const wpEndpoint = `${site.url}/wp-json/wphub/v1/listPlugins`;
-        console.log('[listSitePlugins] Calling WordPress connector:', wpEndpoint);
-
-        const wpResponse = await fetch(wpEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: site.api_key }) });
-
-        if (!wpResponse.ok) {
-            const errorText = await wpResponse.text();
-            console.error('[listSitePlugins] WordPress API error:', wpResponse.status, errorText);
-            return Response.json({ error: 'Failed to connect to WordPress site', details: errorText, status: wpResponse.status }, { status: 502 });
-        }
-
-        const result = await wpResponse.json();
-        console.log('[listSitePlugins] WordPress returned', result.plugins?.length || 0, 'plugins');
-
-        if (!result.success || !result.plugins) {
-            return Response.json({ error: 'Failed to get plugins from WordPress', details: result.message || 'Unknown error' }, { status: 500 });
+serve(async (req) => {
+  return new Response(
+    JSON.stringify({ error: "unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+});
         }
 
         await base44.asServiceRole.entities.Site.update(site_id, { connection_status: 'active', connection_checked_at: new Date().toISOString() });

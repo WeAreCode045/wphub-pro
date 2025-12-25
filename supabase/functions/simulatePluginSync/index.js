@@ -1,42 +1,12 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const { site_id } = await req.json();
-
-        console.log(`[simulatePluginSync] Triggered for site_id: ${site_id}`);
-
-        if (!site_id) {
-            return Response.json({ error: 'Site ID is required' }, { status: 400 });
-        }
-
-        // Get site details
-        const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
-        
-        if (sites.length === 0) {
-            console.log(`[simulatePluginSync] Site not found: ${site_id}`);
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-
-        const site = sites[0];
-        console.log(`[simulatePluginSync] Site found: ${site.name} (${site.url})`);
-
-        // Try to trigger sync on WordPress site via REST API
-        try {
-            const wpSyncUrl = `${site.url}/wp-json/wphub/v1/sync`;
-            console.log(`[simulatePluginSync] Calling WordPress sync endpoint: ${wpSyncUrl}`);
-            
-            const response = await fetch(wpSyncUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    api_key: site.api_key,
-                    trigger: 'platform'
-                })
-            });
+serve(async (req) => {
+  return new Response(
+    JSON.stringify({ error: "unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+});
 
             const responseText = await response.text();
             console.log(`[simulatePluginSync] WordPress response status: ${response.status}`);

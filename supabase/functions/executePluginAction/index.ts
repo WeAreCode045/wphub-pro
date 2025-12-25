@@ -1,120 +1,78 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
+serve(async (req) => {
     try {
-        const base44 = createClientFromRequest(req);
-        const { site_id, installation_id, action, file_url, plugin_slug } = await req.json();
-
-        console.log('[executePluginAction] === START ===');
-        console.log('[executePluginAction] Site ID:', site_id);
-        console.log('[executePluginAction] Installation ID:', installation_id);
-        console.log('[executePluginAction] Action:', action);
-        console.log('[executePluginAction] Plugin Slug:', plugin_slug);
-        console.log('[executePluginAction] File URL:', file_url);
-
-        if (!site_id || !installation_id || !action) {
-            return Response.json({ error: 'Missing required parameters' }, { status: 400 });
+        // Auth check
+        const supabase = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+        const authHeader = req.headers.get('Authorization');
+        const token = authHeader ? authHeader.replace('Bearer ', '') : null;
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+        if (!user) {
+            return new Response(
+                JSON.stringify({ error: "unauthorized" }),
+                { status: 401, headers: { "Content-Type": "application/json" } }
+            );
         }
 
-        // Get site details
-        const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
-        
-        if (sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-
-        const site = sites[0];
-        console.log('[executePluginAction] Site:', site.name, site.url);
-
-        // Create Basic Auth header
-        const username = site.wp_username || 'admin';
-        const authHeader = 'Basic ' + btoa(username + ':' + site.api_key);
-
-        let result;
+        // Parse request
+        const body = await req.json();
+        const { site, plugin_slug, action, file_url, installation_id } = body;
+        let result = { success: false, message: 'Unknown error' };
 
         switch (action) {
             case 'install':
                 result = await installPlugin(site, plugin_slug, file_url, authHeader);
                 break;
-            case 'activate':
-                result = await activatePlugin(site, plugin_slug, authHeader);
-                break;
-            case 'deactivate':
+                switch (action) {
+                    case 'install':
+                        result = await installPlugin(site, plugin_slug, file_url, authHeader);
+                        break;
+                    case 'activate':
+                        result = await activatePlugin(site, plugin_slug, authHeader);
+                        break;
+                    case 'deactivate':
+                        result = await deactivatePlugin(site, plugin_slug, authHeader);
+                        break;
+                    case 'uninstall':
+                        result = await uninstallPlugin(site, plugin_slug, authHeader);
+                        break;
+                    default:
+                        return new Response(
+                            JSON.stringify({ error: 'Invalid action' }),
+                            { status: 400, headers: { "Content-Type": "application/json" } }
+                        );
+                }
+                return new Response(
+                    JSON.stringify(result),
+                    { status: result.success ? 200 : 400, headers: { "Content-Type": "application/json" } }
+                );
                 result = await deactivatePlugin(site, plugin_slug, authHeader);
                 break;
             case 'uninstall':
                 result = await uninstallPlugin(site, plugin_slug, authHeader);
                 break;
-            case 'update':
-                // First uninstall, then install new version
-                await deactivatePlugin(site, plugin_slug, authHeader);
-                await uninstallPlugin(site, plugin_slug, authHeader);
-                result = await installPlugin(site, plugin_slug, file_url, authHeader);
-                if (result.success) {
-                    result = await activatePlugin(site, plugin_slug, authHeader);
-                }
-                break;
             default:
-                return Response.json({ error: 'Invalid action' }, { status: 400 });
+                return new Response(
+                    JSON.stringify({ error: 'Invalid action' }),
+                    { status: 400, headers: { "Content-Type": "application/json" } }
+                );
         }
 
-        // Update installation status in database
-        if (result.success) {
-            const updateData = {
-                last_sync: new Date().toISOString()
-            };
-
-            if (action === 'install') {
-                updateData.status = 'inactive';
-                updateData.installed_version = result.version;
-                updateData.is_active = false;
-            } else if (action === 'activate') {
-                updateData.status = 'active';
-                updateData.is_active = true;
-            } else if (action === 'deactivate') {
-                updateData.status = 'inactive';
-                updateData.is_active = false;
-            } else if (action === 'uninstall') {
-                updateData.status = 'available';
-                updateData.installed_version = null;
-                updateData.is_active = false;
-            } else if (action === 'update') {
-                updateData.status = 'active';
-                updateData.installed_version = result.version;
-                updateData.is_active = true;
-            }
-
-            await base44.asServiceRole.entities.PluginInstallation.update(installation_id, updateData);
-            
-            console.log('[executePluginAction] ✅ Database updated');
-        } else {
-            // Update status to error
-            await base44.asServiceRole.entities.PluginInstallation.update(installation_id, {
-                status: 'error',
-                last_sync: new Date().toISOString()
-            });
-            
-            console.error('[executePluginAction] ❌ Action failed:', result.error);
-        }
-
-        console.log('[executePluginAction] === END ===');
-
-        return Response.json({
-            success: result.success,
-            message: result.message,
-            error: result.error,
-            version: result.version
-        });
-
+        return new Response(
+            JSON.stringify(result),
+            { status: result.success ? 200 : 400, headers: { "Content-Type": "application/json" } }
+        );
     } catch (error) {
         console.error('[executePluginAction] ❌ ERROR:', error.message);
         console.error('[executePluginAction] Stack:', error.stack);
-        return Response.json({ 
-            success: false,
-            error: error.message 
-        }, { status: 500 });
+        return new Response(
+            JSON.stringify({ success: false, error: error.message }),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+        );
     }
 });
+
 
 async function installPlugin(site, plugin_slug, file_url, authHeader) {
     console.log('[installPlugin] Installing plugin:', plugin_slug);

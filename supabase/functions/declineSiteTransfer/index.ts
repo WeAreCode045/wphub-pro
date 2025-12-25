@@ -3,8 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 Deno.serve(async (req) => {
   try {
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || Deno.env.get('VITE_SUPABASE_URL')
-    const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY')
+    const SUPABASE_URL = Deno.env.get('SB_URL')
+    const ANON_KEY = Deno.env.get('SB_ANON_KEY')
     const supabase = createClient(SUPABASE_URL, ANON_KEY)
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
     let user = null

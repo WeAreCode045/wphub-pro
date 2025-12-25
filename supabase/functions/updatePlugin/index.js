@@ -1,43 +1,12 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { site_id, plugin_slug, plugin_id, download_url } = await req.json();
-
-        console.log('[updatePlugin] === START ===');
-        console.log('[updatePlugin] Site ID:', site_id);
-        console.log('[updatePlugin] Plugin slug:', plugin_slug);
-        console.log('[updatePlugin] Plugin ID:', plugin_id);
-        console.log('[updatePlugin] Download URL:', download_url);
-
-        if (!site_id || !plugin_slug) {
-            return Response.json({ error: 'Site ID and plugin slug are required' }, { status: 400 });
-        }
-
-        // Get site details
-        const sites = await base44.entities.Site.filter({ id: site_id });
-        if (sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-        const site = sites[0];
-
-        console.log('[updatePlugin] Site:', site.name);
-
-        // Call connector endpoint
-        const connectorUrl = `${site.url}/wp-json/wphub/v1/updatePlugin`;
-        console.log('[updatePlugin] Calling connector:', connectorUrl);
-
-        const payload = {
-            api_key: site.api_key,
-            plugin_slug: plugin_slug
-        };
+serve(async (req) => {
+  return new Response(
+    JSON.stringify({ error: "unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+});
 
         if (download_url) {
             payload.file_url = download_url;

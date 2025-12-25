@@ -1,8 +1,20 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
     try {
-        const base44 = createClientFromRequest(req);
+        // --- Require authentication ---
+        const supabaseClient = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_ANON_KEY'));
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+        const accessToken = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser(accessToken);
+        if (userError || !user) {
+            return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // --- Main logic ---
         const { site_id, api_key } = await req.json();
 
         console.log('[testSiteConnection] Testing connection with:', { 

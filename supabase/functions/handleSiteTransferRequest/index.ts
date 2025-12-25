@@ -70,8 +70,8 @@ Deno.serve(async (req) => {
 
       // Send rejection message to requester
       await base44.asServiceRole.entities.Message.create({
-        subject: `Overdrachtverzoek afgewezen: ${site.name}`,
-        message: `Je overdrachtverzoek voor site "${site.name}" is afgewezen door ${user.full_name}.`,
+          // TODO: Implement user authentication and lookup
+          // For now, return unauthorized
         sender_id: user.id,
         sender_email: user.email,
         sender_name: user.full_name,

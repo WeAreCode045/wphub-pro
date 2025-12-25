@@ -1,86 +1,73 @@
+declare const Deno: any;
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createClientFromRequest } from '../base44Shim.js';
 
-Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const { site_id } = await req.json();
+function getSupabaseClientOrShim(req: Request) {
+  const url = Deno.env.get('SB_URL') || Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SB_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (url && key) {
+    return createClient(url, key);
+  }
+  return createClientFromRequest(req);
+}
 
-        console.log('[getWordPressPluginData] === START ===');
-        console.log('[getWordPressPluginData] Site ID:', site_id);
-
-        if (!site_id) {
-            return Response.json({ error: 'Site ID is required' }, { status: 400 });
-        }
-
-        // Get site details
-        const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
-        
-        if (sites.length === 0) {
-            console.log('[getWordPressPluginData] Site not found');
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-
-        const site = sites[0];
-        console.log('[getWordPressPluginData] Site:', site.name, site.url);
-
-        // Call WordPress REST API to get all plugins using connector endpoint
-        const wpEndpoint = `${site.url}/wp-json/wphub/v1/getInstalledPlugins`;
-        console.log('[getWordPressPluginData] Calling WordPress connector:', wpEndpoint);
-
-        const wpResponse = await fetch(wpEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                api_key: site.api_key
-            })
-        });
-
-        if (!wpResponse.ok) {
-            const errorText = await wpResponse.text();
-            console.error('[getWordPressPluginData] WordPress API error:', wpResponse.status, errorText);
-            return Response.json({ 
-                error: 'Failed to connect to WordPress site',
-                details: errorText,
-                status: wpResponse.status
-            }, { status: 502 });
-        }
-
-        const result = await wpResponse.json();
-        console.log('[getWordPressPluginData] WordPress returned', result.plugins?.length || 0, 'plugins');
-
-        if (!result.success || !result.plugins) {
-            return Response.json({ 
-                error: 'Failed to get plugins from WordPress',
-                details: result.message || 'Unknown error'
-            }, { status: 500 });
-        }
-
-        // Format plugins data
-        const plugins = result.plugins.map(plugin => ({
-            name: plugin.name,
-            slug: plugin.slug,
-            version: plugin.version,
-            description: plugin.description || '',
-            is_active: plugin.is_active || false
-        }));
-
-        console.log('[getWordPressPluginData] === END ===');
-        console.log('[getWordPressPluginData] Returning', plugins.length, 'plugins');
-
-        return Response.json({ 
-            success: true,
-            plugins: plugins,
-            total: plugins.length
-        });
-
-    } catch (error) {
-        console.error('[getWordPressPluginData] ❌ ERROR:', error.message);
-        console.error('[getWordPressPluginData] Stack:', error.stack);
-        return Response.json({ 
-            error: error.message,
-            stack: error.stack
-        }, { status: 500 });
+serve(async (req: Request) => {
+  try {
+    const base44 = getSupabaseClientOrShim(req);
+    // Require Bearer token auth
+    const authHeader = req.headers.get('authorization');
+    let user = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      if (base44.auth && base44.auth.getUser) {
+        const { data } = await base44.auth.getUser(token);
+        user = data?.user ?? null;
+      } else if (base44.auth && base44.auth.me) {
+        user = await base44.auth.me();
+      }
     }
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+    }
+
+    const { site_id } = await req.json();
+    if (!site_id) {
+      return new Response(JSON.stringify({ error: 'Missing site_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
+    }
+    // Get site details
+    const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
+    if (!sites || sites.length === 0) {
+      return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+    }
+    const site = sites[0];
+    // Call WordPress REST API to get all plugins using connector endpoint
+    const wpEndpoint = `${site.url}/wp-json/wphub/v1/getInstalledPlugins`;
+    const wpResponse = await fetch(wpEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: site.api_key })
+    });
+    if (!wpResponse.ok) {
+      const errorText = await wpResponse.text();
+      return new Response(JSON.stringify({ error: 'Failed to connect to WordPress site', details: errorText, status: wpResponse.status }), { status: 502 });
+    }
+    const result = await wpResponse.json();
+    if (!result.success || !result.plugins) {
+      return new Response(JSON.stringify({ error: 'Failed to get plugins from WordPress', details: result.message || 'Unknown error' }), { status: 500 });
+    }
+    // Format plugins data
+    const plugins = result.plugins.map((plugin: any) => ({
+      name: plugin.name,
+      slug: plugin.slug,
+      version: plugin.version,
+      description: plugin.description || '',
+      is_active: plugin.is_active || false
+    }));
+    return new Response(JSON.stringify({ success: true, plugins, total: plugins.length }), { headers: { 'content-type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error?.message || String(error) }), { status: 500, headers: { 'content-type': 'application/json' } });
+  }
 });

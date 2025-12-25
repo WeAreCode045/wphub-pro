@@ -1,6 +1,26 @@
 import { createClientFromRequest } from '../base44Shim.js';
 
-Deno.serve(async (req) => {
+type WPTheme = {
+  name?: string;
+  slug?: string;
+  version?: string;
+  description?: string;
+  author?: {
+    display_name?: string;
+    user_nicename?: string;
+    profile?: string;
+  };
+  screenshot_url?: string;
+  preview_url?: string;
+  homepage?: string;
+  download_link?: string;
+  active_installs?: number;
+  rating?: number;
+  num_ratings?: number;
+  last_updated?: string;
+};
+
+Deno.serve(async (req: Request) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -26,7 +46,7 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
 
-    const themes = (data.themes || []).map(theme => ({
+    const themes = ((data.themes as WPTheme[]) || []).map((theme: WPTheme) => ({
       name: theme.name,
       slug: theme.slug,
       version: theme.version,
@@ -55,9 +75,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Search WordPress themes error:', error);
-    return Response.json({ 
-      success: false, 
-      error: error.message || 'Failed to search themes' 
+    const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to search themes');
+    return Response.json({
+      success: false,
+      error: message
     });
   }
 });

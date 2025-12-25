@@ -1,42 +1,8 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { 
-      subject, 
-      message, 
-      context,
-      to_user_id,
-      to_team_id,
-      to_team_member_id,
-      is_team_inbox,
-      is_project_inbox,
-      project_id
-    } = await req.json();
-
-    if (!subject || !message) {
-      return Response.json({ 
-        error: 'Subject and message are required' 
-      }, { status: 400 });
-    }
-
-    const isAdmin = user.role === 'admin';
-
-    // Determine recipient details based on context
-    let recipient_type;
-    let recipient_id;
-    let recipient_email;
-    let team_id;
-
-    // Admin can send to any context
-    if (isAdmin && context) {
       if (context.type === 'user' && to_user_id) {
         const targetUser = await base44.asServiceRole.entities.User.get(to_user_id);
         recipient_type = 'user';
@@ -79,7 +45,6 @@ Deno.serve(async (req) => {
         recipient_id = team.owner_id;
         recipient_email = owner.email;
       }
-    }
     // Regular users can only send within teams/projects
     else if (!isAdmin) {
       // Verify user is part of the team/project

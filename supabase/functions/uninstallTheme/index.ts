@@ -1,70 +1,69 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Require authentication
+    const authHeader = req.headers.get("authorization") || "";
+    const jwt = authHeader.replace(/^Bearer /i, "");
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const { site_id, theme_slug, theme_id } = await req.json();
+    // Supabase client (service role)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
-    if (!site_id || !theme_slug) {
-      return Response.json({ success: false, error: 'site_id and theme_slug are required' });
+    // Parse request body
+    const body = await req.json();
+    const { theme_id, site_id, user_email, theme_slug, site_name } = body;
+    if (!theme_id || !site_id || !user_email || !theme_slug || !site_name) {
+      return new Response(JSON.stringify({ error: "Missing required parameters" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const site = await base44.entities.Site.get(site_id);
-
-    if (!site) {
-      return Response.json({ success: false, error: 'Site not found' });
+    // Fetch theme
+    const { data: theme, error: themeError } = await supabase.from('themes').select('*').eq('id', theme_id).single();
+    if (themeError || !theme) {
+      return new Response(JSON.stringify({ error: "Theme not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const response = await fetch(`${site.url}/wp-json/wphub/v1/uninstallTheme`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        api_key: site.api_key,
-        theme_slug: theme_slug
-      })
-    });
+    // Remove site from installed_on
+    const installedOn = theme.installed_on || [];
+    const updatedInstalledOn = installedOn.filter((i: any) => i.site_id !== site_id);
+    await supabase.from('themes').update({ installed_on: updatedInstalledOn }).eq('id', theme_id);
 
-    const data = await response.json();
-
-    if (data.success) {
-      if (theme_id) {
-        const theme = await base44.entities.Theme.get(theme_id);
-        if (theme) {
-          const installedOn = theme.installed_on || [];
-          const updatedInstalledOn = installedOn.filter(i => i.site_id !== site_id);
-          await base44.entities.Theme.update(theme_id, {
-            installed_on: updatedInstalledOn
-          });
-        }
-      }
-
-      await base44.entities.ActivityLog.create({
-        user_email: user.email,
-        action: `Theme verwijderd van ${site.name}`,
+    // Log activity
+    await supabase.from('ActivityLog').insert([
+      {
+        user_email,
+        action: `Theme verwijderd van ${site_name}`,
         entity_type: 'site',
         entity_id: site_id,
         details: theme_slug
-      });
+      }
+    ]);
 
-      return Response.json({
-        success: true,
-        message: 'Theme uninstalled successfully'
-      });
-    } else {
-      return Response.json({
-        success: false,
-        error: data.message || 'Failed to uninstall theme'
-      });
-    }
+    return new Response(
+      JSON.stringify({ success: true, message: 'Theme uninstalled successfully' }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (error) {
-    return Response.json({ success: false, error: error.message });
+    let errorMessage = "Failed to uninstall theme";
+    if (error && typeof error === "object" && "message" in error) {
+      errorMessage = (error as { message?: string }).message || errorMessage;
+    }
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 });

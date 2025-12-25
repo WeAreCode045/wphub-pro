@@ -1,84 +1,73 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
+function jsonResponse(body: any, status = 200) {
+    return new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+    });
+}
+
+serve(async (req) => {
+    // Require authentication
+    const authHeader = req.headers.get("authorization") || "";
+    const jwt = authHeader.replace(/^Bearer /i, "");
+    if (!jwt) {
+        return jsonResponse({ error: "unauthorized" }, 401);
+    }
+
+    // Supabase client (service role)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
     try {
-        const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        const body = await req.json();
+        const { plugin_id, site_id, connector_url, download_url, payload } = body;
+        if (!plugin_id || !site_id || !connector_url || !payload) {
+            return jsonResponse({ error: "Missing required parameters" }, 400);
         }
 
-        const { site_id, plugin_slug, plugin_id, download_url } = await req.json();
-
-        console.log('[updatePlugin] === START ===');
-        console.log('[updatePlugin] Site ID:', site_id);
-        console.log('[updatePlugin] Plugin slug:', plugin_slug);
-        console.log('[updatePlugin] Plugin ID:', plugin_id);
-        console.log('[updatePlugin] Download URL:', download_url);
-
-        if (!site_id || !plugin_slug) {
-            return Response.json({ error: 'Site ID and plugin slug are required' }, { status: 400 });
-        }
-
-        // Get site details
-        const sites = await base44.entities.Site.filter({ id: site_id });
-        if (sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-        const site = sites[0];
-
-        console.log('[updatePlugin] Site:', site.name);
-
-        // Call connector endpoint
-        const connectorUrl = `${site.url}/wp-json/wphub/v1/updatePlugin`;
-        console.log('[updatePlugin] Calling connector:', connectorUrl);
-
-        const payload = {
-            api_key: site.api_key,
-            plugin_slug: plugin_slug
-        };
-
+        // Optionally add download_url to payload
         if (download_url) {
             payload.file_url = download_url;
         }
 
-        const response = await fetch(connectorUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        // Call connector
+        const response = await fetch(connector_url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('[updatePlugin] Connector error:', errorText);
-            return Response.json({ success: false, error: `Connector error: ${response.status} - ${errorText}` }, { status: 500 });
+            console.error("[updatePlugin] Connector error:", errorText);
+            return jsonResponse({ success: false, error: `Connector error: ${response.status} - ${errorText}` }, 500);
         }
 
         const result = await response.json();
-        console.log('[updatePlugin] Connector response:', result);
+        console.log("[updatePlugin] Connector response:", result);
 
-        if (result.success && plugin_id && result.version) {
-            const plugins = await base44.entities.Plugin.filter({ id: plugin_id });
-            if (plugins.length > 0) {
+        // Update plugin version in installed_on if successful
+        if (result.success && result.version) {
+            const { data: plugins, error: pluginError } = await supabase.from("plugins").select("*").eq("id", plugin_id);
+            if (!pluginError && plugins && plugins.length > 0) {
                 const plugin = plugins[0];
                 const currentInstalledOn = plugin.installed_on || [];
-                const existingEntry = currentInstalledOn.find(entry => entry.site_id === site_id);
-                
+                const existingEntry = currentInstalledOn.find((entry: any) => entry.site_id === site_id);
                 if (existingEntry) {
                     existingEntry.version = result.version;
-                    await base44.entities.Plugin.update(plugin_id, { installed_on: currentInstalledOn });
-                    console.log('[updatePlugin] ✅ Updated version in installed_on to:', result.version);
+                    await supabase.from("plugins").update({ installed_on: currentInstalledOn }).eq("id", plugin_id);
+                    console.log("[updatePlugin] ✅ Updated version in installed_on to:", result.version);
                 }
             }
         }
 
-        console.log('[updatePlugin] === END ===');
-
-        return Response.json({ success: result.success, message: result.message, version: result.version });
-
-    } catch (error) {
-        console.error('[updatePlugin] ❌ ERROR:', error.message);
-        return Response.json({ success: false, error: error.message }, { status: 500 });
+        console.log("[updatePlugin] === END ===");
+        return jsonResponse({ success: result.success, message: result.message, version: result.version });
+    } catch (error: any) {
+        console.error("[updatePlugin] ❌ ERROR:", error.message || String(error));
+        return jsonResponse({ success: false, error: error.message || String(error) }, 500);
     }
 });

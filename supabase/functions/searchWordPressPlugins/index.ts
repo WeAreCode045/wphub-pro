@@ -1,16 +1,32 @@
-import { createClientFromRequest } from '../base44Shim.js';
+declare const Deno: any;
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
+serve(async (req: Request) => {
     try {
-        const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
+        // Create Supabase client from env
+        const supabase = createClient(
+            Deno.env.get('SB_URL') ?? '',
+            Deno.env.get('SB_ANON_KEY') ?? ''
+        );
 
-        if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        // Get user session from Authorization header (if present)
+        const authHeader = req.headers.get('authorization');
+        let user = null;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.slice(7);
+            const { data } = await supabase.auth.getUser(token);
+            user = data?.user ?? null;
         }
 
-        // Support both POST (JSON body) and GET (query params) to avoid 405 on production invoke
-        let search: string | undefined;
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+        }
+
+        // Support both POST (JSON body) and GET (query params)
+        let search;
         let page = 1;
         let per_page = 20;
 
@@ -27,22 +43,27 @@ Deno.serve(async (req) => {
         }
 
         if (!search) {
-            return Response.json({ error: 'Search query is required' }, { status: 400 });
+            return new Response(JSON.stringify({ error: 'Search query is required' }), { status: 400, headers: { 'content-type': 'application/json' } });
         }
 
-        console.log('[searchWordPressPlugins] === START ===');
-        console.log('[searchWordPressPlugins] Search:', search);
-        console.log('[searchWordPressPlugins] Page:', page);
-
         const wpApiUrl = `https://api.wordpress.org/plugins/info/1.2/?action=query_plugins&request[search]=${encodeURIComponent(search)}&request[page]=${page}&request[per_page]=${per_page}`;
-        console.log('[searchWordPressPlugins] Calling WP API:', wpApiUrl);
-
         const response = await fetch(wpApiUrl);
         if (!response.ok) throw new Error(`WordPress API returned ${response.status}`);
 
         const data = await response.json();
-
-        const plugins = data.plugins?.map((plugin: any) => ({
+        type WPPlugin = {
+            name?: string;
+            slug?: string;
+            version?: string;
+            short_description?: string;
+            author?: string;
+            download_link?: string;
+            active_installs?: number;
+            rating?: number;
+            num_ratings?: number;
+            last_updated?: string;
+        };
+        const plugins = (data.plugins as WPPlugin[] | undefined)?.map((plugin: WPPlugin) => ({
             name: plugin.name,
             slug: plugin.slug,
             version: plugin.version,
@@ -55,12 +76,9 @@ Deno.serve(async (req) => {
             last_updated: plugin.last_updated
         })) || [];
 
-        console.log('[searchWordPressPlugins] === END ===');
-
         return new Response(JSON.stringify({ success: true, info: data.info, plugins }), { headers: { 'content-type': 'application/json' } });
-
-    } catch (error: any) {
-        console.error('[searchWordPressPlugins] ❌ ERROR:', error?.message || error);
-        return new Response(JSON.stringify({ error: (error?.message || String(error)) }), { status: 500, headers: { 'content-type': 'application/json' } });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({ error: message }), { status: 500, headers: { 'content-type': 'application/json' } });
     }
 });

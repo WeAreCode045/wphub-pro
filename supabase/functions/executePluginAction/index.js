@@ -1,43 +1,12 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const { site_id, installation_id, action, file_url, plugin_slug } = await req.json();
-
-        console.log('[executePluginAction] === START ===');
-        console.log('[executePluginAction] Site ID:', site_id);
-        console.log('[executePluginAction] Installation ID:', installation_id);
-        console.log('[executePluginAction] Action:', action);
-        console.log('[executePluginAction] Plugin Slug:', plugin_slug);
-        console.log('[executePluginAction] File URL:', file_url);
-
-        if (!site_id || !installation_id || !action) {
-            return Response.json({ error: 'Missing required parameters' }, { status: 400 });
-        }
-
-        // Get site details
-        const sites = await base44.asServiceRole.entities.Site.filter({ id: site_id });
-        
-        if (sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404 });
-        }
-
-        const site = sites[0];
-        console.log('[executePluginAction] Site:', site.name, site.url);
-
-        // Create Basic Auth header
-        const username = site.wp_username || 'admin';
-        const authHeader = 'Basic ' + btoa(username + ':' + site.api_key);
-
-        let result;
-
-        switch (action) {
-            case 'install':
-                result = await installPlugin(site, plugin_slug, file_url, authHeader);
-                break;
-            case 'activate':
-                result = await activatePlugin(site, plugin_slug, authHeader);
+serve(async (req) => {
+  return new Response(
+    JSON.stringify({ error: "unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+});
                 break;
             case 'deactivate':
                 result = await deactivatePlugin(site, plugin_slug, authHeader);

@@ -1,66 +1,54 @@
-import JSZip from 'npm:jszip@3.10.1';
-import { authMeWithToken, extractBearerFromReq, uploadToStorage, jsonResponse } from '../_helpers.ts';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-function generateConnectorPluginCode(apiKey: string, hubUrl: string, version: string) {
-  return `<?php
-/**
- * Plugin Name: WP Plugin Hub Connector
- * Version: ${version}
- */
-// Minimal connector placeholder
-`;
+function jsonResponse(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req) => {
+  // Require authentication
+  const authHeader = req.headers.get("authorization") || "";
+  const jwt = authHeader.replace(/^Bearer /i, "");
+  if (!jwt) {
+    return jsonResponse({ error: "unauthorized" }, 401);
+  }
+
+  // Supabase client (service role)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
   try {
-    const token = extractBearerFromReq(req);
-    const user = await authMeWithToken(token);
-    if (!user || user.role !== 'admin') return jsonResponse({ error: 'Unauthorized - Admin required' }, 403);
-
-    const { api_key, hub_url, version, description, custom_code } = await req.json();
-    if (!version) return jsonResponse({ error: 'Version is required' }, 400);
-
-    let pluginCode = '';
-    if (custom_code) {
-      pluginCode = custom_code.replace(/\{\{API_KEY\}\}/g, api_key || '{{API_KEY}}').replace(/\{\{HUB_URL\}\}/g, hub_url || '{{HUB_URL}}').replace(/\{\{VERSION\}\}/g, version);
-    } else {
-      if (!api_key || !hub_url) return jsonResponse({ error: 'API key and hub URL required for template' }, 400);
-      pluginCode = generateConnectorPluginCode(api_key, hub_url, version);
+    const body = await req.json();
+    const { version, plugin_code, file_url, description } = body;
+    if (!version || !plugin_code || !file_url) {
+      return jsonResponse({ error: "Missing required parameters" }, 400);
     }
 
-    const zip = new JSZip();
-    zip.file('wp-plugin-hub-connector/wp-plugin-hub-connector.php', pluginCode);
-    const zipBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 9 } });
-    const fileName = `wp-plugin-hub-connector-v${version}.zip`;
-    const uploadRes = await uploadToStorage(fileName, zipBytes, 'uploads', 'application/zip');
+    // Insert connector plugin
+    const { data: connector, error: connectorError } = await supabase.from("connectors").insert({
+      version,
+      plugin_code,
+      file_url,
+      description,
+    }).select();
+    if (connectorError || !connector) {
+      return jsonResponse({ error: "Failed to create connector: " + (connectorError?.message || "Unknown error") }, 500);
+    }
 
-    // Create connector record in Supabase via REST
-    const supaUrl = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '') || '';
-    const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('VITE_SUPABASE_SERVICE_ROLE_KEY');
-    const connectorRes = await fetch(`${supaUrl}/rest/v1/connectors`, {
-      method: 'POST',
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ version, plugin_code: pluginCode, file_url: uploadRes.file_url, description })
+    // Update site_settings active_connector_version (optional, adjust as needed)
+    await supabase.from("site_settings").insert({
+      setting_key: "active_connector_version",
+      setting_value: version,
+      description: "Active connector version",
     });
-    if (!connectorRes.ok) {
-      const txt = await connectorRes.text().catch(()=>'');
-      throw new Error('Failed to create connector: '+txt);
-    }
-    const connector = await connectorRes.json();
 
-    // Update site_settings active_connector_version
-    await fetch(`${supaUrl}/rest/v1/site_settings`, {
-      method: 'POST',
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ setting_key: 'active_connector_version', setting_value: version, description: 'Active connector version' })
-    }).catch(()=>{});
-
-    return jsonResponse({ success: true, file_url: uploadRes.file_url, version, connector_id: connector[0]?.id || null });
-
+    return jsonResponse({ success: true, file_url, version, connector_id: connector[0]?.id || null });
   } catch (err: any) {
-    console.error('generateConnectorPlugin error', err);
+    console.error("generateConnectorPlugin error", err);
     return jsonResponse({ error: err.message || String(err) }, 500);
   }
 });
-
-export {};

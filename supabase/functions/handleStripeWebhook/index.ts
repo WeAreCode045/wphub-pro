@@ -1,6 +1,7 @@
-import Stripe from 'npm:stripe@14.11.0';
 
-Deno.serve(async (req) => {
+import Stripe from 'https://esm.sh/stripe@14.11.0?target=deno';
+
+Deno.serve(async (req: Request) => {
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
@@ -49,7 +50,11 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json' } });
   } catch (err) {
+    let errorMessage = 'internal';
+    if (err && typeof err === 'object' && 'message' in err) {
+      errorMessage = (err as { message?: string }).message || errorMessage;
+    }
     console.error('handleStripeWebhook error:', err);
-    return new Response(JSON.stringify({ error: err?.message || 'internal' }), { status: 500, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: { 'content-type': 'application/json' } });
   }
 });

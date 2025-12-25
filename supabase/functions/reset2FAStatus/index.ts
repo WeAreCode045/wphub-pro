@@ -1,45 +1,11 @@
-import { createClientFromRequest } from '../base44Shim.js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (!user) {
-            return Response.json({ 
-                success: false,
-                error: 'Unauthorized' 
-            }, { status: 401 });
-        }
-
-        if (!user.two_fa_enabled) {
-            return Response.json({ 
-                success: false,
-                error: '2FA is not enabled for this user' 
-            }, { status: 400 });
-        }
-
-        await base44.asServiceRole.entities.User.update(user.id, {
-            two_fa_verified_session: null
-        });
-
-        await base44.asServiceRole.entities.ActivityLog.create({
-            user_email: user.email,
-            action: '2FA status gereset',
-            entity_type: "user",
-            entity_id: user.id
-        });
-
-        return Response.json({
-            success: true,
-            message: '2FA status reset'
-        });
-
-    } catch (error) {
-        console.error('[reset2FAStatus] Error:', error.message);
-        return Response.json({ 
-            success: false,
-            error: error.message 
-        }, { status: 500 });
-    }
+  try {
+    // TODO: Implement user authentication and lookup
+    // For now, return unauthorized
+    return Response.json({ success: false, error: 'Unauthorized (auth not implemented)' }, { status: 401 });
+  } catch (error) {
+    return Response.json({ success: false, error: error.message }, { status: 500 });
+  }
 });

@@ -7,8 +7,8 @@ Deno.serve(async (req: Request) => {
     if (!caller) return jsonResponse({ error: 'Unauthorized' }, 401);
 
     // Check if caller is admin by fetching from users table
-    const supa = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '') || '';
-    const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supa = Deno.env.get('SB_URL')?.replace(/\/$/, '') || '';
+    const serviceKey = Deno.env.get('SB_SERVICE_ROLE_KEY');
 
     const adminRes = await fetch(`${supa}/rest/v1/users?id=eq.${encodeURIComponent(caller.id)}`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }

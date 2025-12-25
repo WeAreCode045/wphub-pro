@@ -1,6 +1,12 @@
 #!/bin/bash
+
 # Sync all .env variables to Supabase secrets for Edge Functions
 # Usage: ./sync-supabase-secrets.sh
+#
+# IMPORTANT:
+# - Use SB_URL, SB_ANON_KEY, SB_SERVICE_ROLE_KEY for backend/edge function secrets (not SUPABASE_*)
+# - VITE_* variables are for frontend only and are not secret
+# - This script will set all .env variables as secrets, but only SB_* and other non-SUPABASE_ variables will be accepted by Supabase CLI
 
 if [ ! -f .env ]; then
   echo ".env file not found!"

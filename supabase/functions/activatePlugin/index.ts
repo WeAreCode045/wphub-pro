@@ -9,8 +9,8 @@ Deno.serve(async (req: Request) => {
     const { site_id, plugin_id } = await req.json();
     if (!site_id || !plugin_id) return jsonResponse({ error: 'Missing required parameters' }, 400);
 
-    const supa = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '') || '';
-    const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supa = Deno.env.get('SB_URL')?.replace(/\/$/, '') || '';
+    const serviceKey = Deno.env.get('SB_SERVICE_ROLE_KEY');
 
     // Load site
     const siteRes = await fetch(`${supa}/rest/v1/sites?id=eq.${encodeURIComponent(String(site_id))}`, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });

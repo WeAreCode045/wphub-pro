@@ -1,65 +1,13 @@
-import { createClientFromRequest } from '../base44Shim.js';
-import { jsPDF } from 'npm:jspdf@2.5.1';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
 
-Deno.serve(async (req) => {
-  try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { invoice_id } = await req.json();
-
-    if (!invoice_id) {
-      return Response.json({ error: 'Missing invoice_id' }, { status: 400 });
-    }
-
-    // Get invoice
-    const invoice = await base44.entities.Invoice.get(invoice_id);
-
-    if (!invoice) {
-      return Response.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-
-    // Check if user owns this invoice (or is admin)
-    if (invoice.user_id !== user.id && user.role !== 'admin') {
-      return Response.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    // Load invoice settings
-    const allSettings = await base44.entities.SiteSettings.list();
-    const getSetting = (key, defaultValue) => {
-      const setting = allSettings.find(s => s.setting_key === key);
-      return setting?.setting_value || defaultValue;
-    };
-
-    const settings = {
-      companyName: getSetting('invoice_company_name', 'WPHubPro'),
-      companyDetails: getSetting('invoice_company_details', 'Cloud Plugin Management'),
-      companyAddress: getSetting('invoice_company_address', ''),
-      vatNumber: getSetting('invoice_vat_number', ''),
-      logoUrl: getSetting('invoice_logo_url', ''),
-      footer: getSetting('invoice_footer', 'Bedankt voor je vertrouwen in WPHubPro'),
-      accentColor: getSetting('invoice_accent_color', '#6366f1'),
-      itemBgColor: getSetting('invoice_item_bg_color', '#f9fafb'),
-      textColor: getSetting('invoice_text_color', '#111827')
-    };
-
-    // Convert hex to RGB
-    const hexToRgb = (hex) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : { r: 99, g: 102, b: 241 };
-    };
-
-    const accentRgb = hexToRgb(settings.accentColor);
-    const itemBgRgb = hexToRgb(settings.itemBgColor);
-    const textRgb = hexToRgb(settings.textColor);
+serve(async (req: Request) => {
+  return new Response(
+    JSON.stringify({ error: "unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+});
 
     // Create PDF
     const doc = new jsPDF();
