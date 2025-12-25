@@ -13,19 +13,7 @@ serve(async (req: Request) => {
             Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SB_ANON_KEY') ?? ''
         );
 
-        // Get user session from Authorization header (if present)
-        const authHeader = req.headers.get('authorization');
-        let user = null;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.slice(7);
-            const { data } = await supabase.auth.getUser(token);
-            user = data?.user ?? null;
-        }
-
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized', code: 401, message: 'Invalid JWT' }), { status: 401, headers: corsHeaders });
-        }
-
+        // Note: This endpoint doesn't require authentication since it searches public WordPress.org data
         // Support both POST (JSON body) and GET (query params)
         let search;
         let page = 1;
@@ -77,7 +65,7 @@ serve(async (req: Request) => {
             last_updated: plugin.last_updated
         })) || [];
 
-        return new Response(JSON.stringify({ success: true, info: data.info, plugins }), { headers: corsHeaders });
+        return new Response(JSON.stringify({ success: true, info: data.info, plugins }), { status: 200, headers: corsHeaders });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({ error: message }), { status: 500, headers: corsHeaders });

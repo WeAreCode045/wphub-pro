@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
                 total_installations: allInstallations.length,
                 total_commands: commands.length
             }
-        });
+        }, { headers: corsHeaders });
     } catch (error) {
-        return Response.json({ error: error.message }, { status: 500 });
+        return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
     }
 });

@@ -50,13 +50,13 @@ Deno.serve(async (req: Request) => {
         console.log('Unhandled event type:', event.type);
     }
 
-    return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json', ...corsHeaders } });
   } catch (err) {
     let errorMessage = 'internal';
     if (err && typeof err === 'object' && 'message' in err) {
       errorMessage = (err as { message?: string }).message || errorMessage;
     }
     console.error('handleStripeWebhook error:', err);
-    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: { 'content-type': 'application/json', ...corsHeaders } });
   }
 });
