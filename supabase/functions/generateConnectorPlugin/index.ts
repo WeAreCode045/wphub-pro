@@ -107,6 +107,18 @@ class WP_Plugin_Hub_Connector {
       'permission_callback' => array($this, 'verify_api_key'),
     ));
         
+    register_rest_route('wphub/v1', '/getInstalledPlugins', array(
+      'methods' => 'POST',
+      'callback' => array($this, 'rest_get_installed_plugins'),
+      'permission_callback' => array($this, 'verify_api_key'),
+    ));
+        
+    register_rest_route('wphub/v1', '/getInstalledThemes', array(
+      'methods' => 'POST',
+      'callback' => array($this, 'rest_get_installed_themes'),
+      'permission_callback' => array($this, 'verify_api_key'),
+    ));
+        
     register_rest_route('wphub/v1', '/installPlugin', array(
       'methods' => 'POST',
       'callback' => array($this, 'rest_install_plugin'),
@@ -158,6 +170,52 @@ class WP_Plugin_Hub_Connector {
       'site_id' => $this->site_id,
       'platform_url' => $this->platform_url,
       'message' => 'Connector is active'
+    ), 200);
+  }
+
+  public function rest_get_installed_plugins($request) {
+    $plugins = get_plugins();
+    $installed = array();
+    
+    foreach ($plugins as $plugin_file => $plugin_data) {
+      $is_active = is_plugin_active($plugin_file);
+      $installed[] = array(
+        'name' => $plugin_data['Name'],
+        'slug' => dirname($plugin_file),
+        'version' => $plugin_data['Version'],
+        'status' => $is_active ? 'active' : 'inactive',
+        'file' => $plugin_file,
+        'author' => isset($plugin_data['Author']) ? $plugin_data['Author'] : '',
+        'description' => isset($plugin_data['Description']) ? $plugin_data['Description'] : ''
+      );
+    }
+    
+    return new WP_REST_Response(array(
+      'success' => true,
+      'plugins' => $installed
+    ), 200);
+  }
+
+  public function rest_get_installed_themes($request) {
+    $themes = wp_get_themes();
+    $installed = array();
+    $current = wp_get_theme();
+    
+    foreach ($themes as $theme) {
+      $installed[] = array(
+        'name' => $theme->get('Name'),
+        'slug' => $theme->get_stylesheet(),
+        'version' => $theme->get('Version'),
+        'status' => $current->get_stylesheet() === $theme->get_stylesheet() ? 'active' : 'inactive',
+        'author' => $theme->get('Author'),
+        'screenshot' => $theme->get_screenshot(),
+        'description' => $theme->get('Description')
+      );
+    }
+    
+    return new WP_REST_Response(array(
+      'success' => true,
+      'themes' => $installed
     ), 200);
   }
 
