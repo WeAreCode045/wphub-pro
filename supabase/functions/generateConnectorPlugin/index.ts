@@ -152,10 +152,10 @@ serve(async (req) => {
     const { data: publicData } = supabase.storage.from('Connectors').getPublicUrl(objectPath);
     const fileUrl = publicData?.publicUrl || '';
 
-    // Insert connector record
+    // Insert connector record with both plugin_code (PHP source) and file_url (ZIP download)
     const { data: connector, error: connectorError } = await supabase.from('connectors').insert({
       version,
-      plugin_code: '',
+      plugin_code: pluginPhp,
       file_url: fileUrl,
       description: body.description ?? '',
     }).select();
