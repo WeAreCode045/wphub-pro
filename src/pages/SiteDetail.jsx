@@ -124,23 +124,25 @@ export default function SiteDetail() {
   });
 
   const { data: wpPlugins = [], isLoading: isLoadingWpPlugins, refetch: refetchWpPlugins } = useQuery({
-    queryKey: ['wp-plugins', siteId],
+    queryKey: ['wp-plugins', siteId, site?.url, site?.api_key],
     queryFn: async () => {
-      const response = await base44.functions.invoke('listSitePlugins', { site_id: siteId });
+      if (!site?.url || !site?.api_key) return [];
+      const response = await base44.functions.invoke('listSitePlugins', { site_url: site.url, api_key: site.api_key });
       return response.data.plugins || [];
     },
-    enabled: !!siteId,
+    enabled: !!siteId && !!site?.url && !!site?.api_key,
     refetchInterval: 30000,
     initialData: [],
   });
 
   const { data: wpThemes = [], isLoading: isLoadingWpThemes, refetch: refetchWpThemes } = useQuery({
-    queryKey: ['wp-themes', siteId],
+    queryKey: ['wp-themes', siteId, site?.url, site?.api_key],
     queryFn: async () => {
-      const response = await base44.functions.invoke('listSiteThemes', { site_id: siteId });
+      if (!site?.url || !site?.api_key) return [];
+      const response = await base44.functions.invoke('listSiteThemes', { site_url: site.url, api_key: site.api_key });
       return response.data.themes || [];
     },
-    enabled: !!siteId,
+    enabled: !!siteId && !!site?.url && !!site?.api_key,
     refetchInterval: 30000,
     initialData: [],
   });
