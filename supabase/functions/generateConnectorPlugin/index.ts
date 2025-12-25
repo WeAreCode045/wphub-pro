@@ -128,12 +128,13 @@ serve(async (req) => {
     const version = sanitizeVersion(body.version);
     const platformUrl = body.platform_url || Deno.env.get('PLATFORM_URL') || Deno.env.get('YOUR_PLATFORM_URL') || 'https://wphub.pro';
 
-    // Build plugin from template
+    // Build plugin from template with proper folder structure
     const zip = new JSZip();
     const pluginPhp = TEMPLATE_CONTENT
       .replace(/{{VERSION}}/g, version)
       .replace(/{{PLATFORM_URL}}/g, platformUrl);
-    zip.file('wp-plugin-hub-connector.php', pluginPhp);
+    // Create folder structure: wp-plugin-hub-connector/wp-plugin-hub-connector.php
+    zip.file('wp-plugin-hub-connector/wp-plugin-hub-connector.php', pluginPhp);
 
     const zipBytes = await zip.generateAsync({ type: 'uint8array' });
 
