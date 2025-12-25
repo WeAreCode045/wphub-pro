@@ -153,6 +153,74 @@ class WP_Plugin_Hub_Connector {
     register_setting('wp_plugin_hub_group', 'wp_plugin_hub_api_key');
     register_setting('wp_plugin_hub_group', 'wp_plugin_hub_site_id');
   }
+
+  public function rest_ping($request) {
+    $params = $request->get_json_params();
+    $provided_key = isset($params['api_key']) ? $params['api_key'] : '';
+    if ($provided_key !== $this->api_key || empty($provided_key)) {
+      return new WP_REST_Response(array(
+        'ok' => false,
+        'message' => 'Invalid or missing API key'
+      ), 401);
+    }
+    return new WP_REST_Response(array(
+      'ok' => true,
+      'site_id' => $this->site_id,
+      'platform_url' => $this->platform_url,
+      'message' => 'Connector is active'
+    ), 200);
+  }
+
+  private function get_admin_page_url($extra = array()) {
+    $url = admin_url('admin.php?page=wp-plugin-hub');
+    if (!empty($extra) && is_array($extra)) {
+      foreach ($extra as $k => $v) {
+        $url = add_query_arg($k, $v, $url);
+      }
+    }
+    return $url;
+  }
+
+  public function admin_page() {
+    // Optional test connection to platform
+    if (isset($_GET['test_connection']) && $_GET['test_connection'] === '1') {
+      $response = wp_remote_get($this->platform_url, array('timeout' => 10));
+      if (is_wp_error($response)) {
+        echo '<div class="notice notice-error"><p>Platform verbinding mislukt: ' . esc_html($response->get_error_message()) . '</p></div>';
+      } else {
+        $code = wp_remote_retrieve_response_code($response);
+        echo '<div class="notice notice-success"><p>Platform bereikbaar (HTTP ' . esc_html($code) . ').</p></div>';
+      }
+    }
+
+    $api_key = get_option('wp_plugin_hub_api_key', '');
+    $site_id = get_option('wp_plugin_hub_site_id', '');
+
+    echo '<div class="wrap wphub-wrap">';
+    echo '<div class="wphub-card">';
+    echo '<h2><span class="dashicons dashicons-cloud"></span> WP Plugin Hub Connector</h2>';
+    echo '<p style="color: #64748b;">Beheer je plugins en themes centraal via het WP Plugin Hub dashboard.</p>';
+    echo '<div class="wphub-info"><p><strong>Dashboard:</strong> <a href="' . esc_url($this->platform_url) . '" target="_blank">' . esc_html($this->platform_url) . '</a></p></div>';
+
+    // Settings form
+    echo '<form method="post" action="' . esc_url(admin_url('options.php')) . '">';
+    settings_fields('wp_plugin_hub_group');
+    echo '<table class="form-table">';
+    echo '<tr><th scope="row"><label for="wp_plugin_hub_api_key">API Key</label></th>';
+    echo '<td><input name="wp_plugin_hub_api_key" id="wp_plugin_hub_api_key" type="text" class="regular-text" value="' . esc_attr($api_key) . '" /></td></tr>';
+    echo '<tr><th scope="row"><label for="wp_plugin_hub_site_id">Site ID</label></th>';
+    echo '<td><input name="wp_plugin_hub_site_id" id="wp_plugin_hub_site_id" type="text" class="regular-text" value="' . esc_attr($site_id) . '" /></td></tr>';
+    echo '</table>';
+    submit_button('Instellingen opslaan');
+    echo '</form>';
+
+    // Actions
+    $test_url = esc_url($this->get_admin_page_url(array('test_connection' => '1')));
+    echo '<p><a href="' . $test_url . '" class="button button-secondary"><span class="dashicons dashicons-yes"></span> Test verbinding met platform</a></p>';
+
+    echo '</div>'; // card
+    echo '</div>'; // wrap
+  }
 }
 
 // Instantiate the connector to register hooks
