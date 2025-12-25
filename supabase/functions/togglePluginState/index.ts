@@ -19,6 +19,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing site_id or plugin_slug' }), { status: 400, headers: corsHeaders });
     }
 
+    // Validate plugin slug format (reject "." and other invalid formats)
+    if (plugin_slug === '.' || plugin_slug.startsWith('/') || plugin_slug.includes('..')) {
+      return new Response(JSON.stringify({ error: 'Invalid plugin slug format' }), { status: 400, headers: corsHeaders });
+    }
+
     // Get site details
     const { data: site, error: siteError } = await supabase.from('sites').select('url, api_key').eq('id', site_id).single();
     if (siteError || !site) {
