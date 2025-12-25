@@ -20,16 +20,21 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { version, plugin_code, file_url, description } = body;
-    if (!version || !plugin_code || !file_url) {
-      return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: corsHeaders });
+    if (!version) {
+      return new Response(JSON.stringify({ error: "Missing required parameter: version" }), { status: 400, headers: corsHeaders });
     }
+
+    // Allow plugin_code/file_url to be optional; fall back to empty strings so the insert succeeds
+    const safePluginCode = plugin_code ?? '';
+    const safeFileUrl = file_url ?? '';
+    const safeDescription = description ?? '';
 
     // Insert connector plugin
     const { data: connector, error: connectorError } = await supabase.from("connectors").insert({
       version,
-      plugin_code,
-      file_url,
-      description,
+      plugin_code: safePluginCode,
+      file_url: safeFileUrl,
+      description: safeDescription,
     }).select();
     if (connectorError || !connector) {
       return new Response(JSON.stringify({ error: "Failed to create connector: " + (connectorError?.message || "Unknown error") }), { status: 500, headers: corsHeaders });
@@ -42,7 +47,7 @@ serve(async (req) => {
       description: "Active connector version",
     });
 
-    return new Response(JSON.stringify({ success: true, file_url, version, connector_id: connector[0]?.id || null }), { status: 200, headers: corsHeaders });
+    return new Response(JSON.stringify({ success: true, file_url: safeFileUrl, version, connector_id: connector[0]?.id || null }), { status: 200, headers: corsHeaders });
   } catch (err: any) {
     console.error("generateConnectorPlugin error", err);
     const message = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown error');
