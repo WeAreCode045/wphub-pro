@@ -1,16 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const cors = handleCors(req);
+    if (cors) return cors;
     try {
         // --- Require authentication ---
         const supabaseClient = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_ANON_KEY'));
@@ -33,7 +26,7 @@ Deno.serve(async (req) => {
         });
 
         if (!site_id && !api_key) {
-            return Response.json({ error: 'Site ID or API key is required' }, { status: 400 });
+            return Response.json({ error: 'Site ID or API key is required' }, { status: 400, headers: corsHeaders });
         }
 
         let site;
@@ -51,7 +44,7 @@ Deno.serve(async (req) => {
             return Response.json({ 
                 success: false,
                 error: site_id ? 'Site not found' : 'Invalid API key' 
-            }, { status: 404 });
+            }, { status: 404, headers: corsHeaders });
         }
 
         console.log('[testSiteConnection] Site found:', site.name, '(ID:', site.id, ')');
@@ -93,7 +86,7 @@ Deno.serve(async (req) => {
                     site_url: site.url,
                     wp_version: responseData.wp_version,
                     plugins_count: responseData.plugins_count || 0
-                });
+                }, { headers: corsHeaders });
             } else {
                 const errorText = await wpResponse.text();
                 console.error('[testSiteConnection] Error response:', errorText);
@@ -122,7 +115,7 @@ Deno.serve(async (req) => {
                     site_id: site.id,
                     status: wpResponse.status,
                     details: errorText
-                }, { status: wpResponse.status });
+                }, { status: wpResponse.status, headers: corsHeaders });
             }
         } catch (fetchError) {
             console.error('[testSiteConnection] Fetch error:', fetchError);
@@ -137,13 +130,13 @@ Deno.serve(async (req) => {
                 error: 'Kan geen verbinding maken met WordPress site. Controleer of de connector plugin is geïnstalleerd en geactiveerd.',
                 site_id: site.id,
                 details: fetchError.message
-            }, { status: 502 });
+            }, { status: 502, headers: corsHeaders });
         }
 
     } catch (error) {
         console.error('[testSiteConnection] Error:', error);
         return Response.json({ 
             error: error.message 
-        }, { status: 500 });
+        }, { status: 500, headers: corsHeaders });
     }
 });

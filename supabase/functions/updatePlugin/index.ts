@@ -1,29 +1,15 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-function jsonResponse(body: any, status = 200) {
-    return new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-    });
-}
-
-const CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const cors = handleCors(req);
+    if (cors) return cors;
     // Require authentication
     const authHeader = req.headers.get("authorization") || "";
     const jwt = authHeader.replace(/^Bearer /i, "");
     if (!jwt) {
-        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS_HEADERS });
+        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
     // Supabase client (service role)
@@ -35,7 +21,7 @@ serve(async (req) => {
         const body = await req.json();
         const { plugin_id, site_id, connector_url, download_url, payload } = body;
         if (!plugin_id || !site_id || !connector_url || !payload) {
-            return jsonResponse({ error: "Missing required parameters" }, 400);
+            return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: corsHeaders });
         }
 
         // Optionally add download_url to payload
@@ -53,7 +39,7 @@ serve(async (req) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("[updatePlugin] Connector error:", errorText);
-            return jsonResponse({ success: false, error: `Connector error: ${response.status} - ${errorText}` }, 500);
+            return new Response(JSON.stringify({ success: false, error: `Connector error: ${response.status} - ${errorText}` }), { status: 500, headers: corsHeaders });
         }
 
         const result = await response.json();
@@ -75,9 +61,9 @@ serve(async (req) => {
         }
 
         console.log("[updatePlugin] === END ===");
-        return jsonResponse({ success: result.success, message: result.message, version: result.version });
+        return new Response(JSON.stringify({ success: result.success, message: result.message, version: result.version }), { status: 200, headers: corsHeaders });
     } catch (error: any) {
         console.error("[updatePlugin] ❌ ERROR:", error.message || String(error));
-        return jsonResponse({ success: false, error: error.message || String(error) }, 500);
+        return new Response(JSON.stringify({ success: false, error: error.message || String(error) }), { status: 500, headers: corsHeaders });
     }
 });

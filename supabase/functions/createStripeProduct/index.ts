@@ -1,23 +1,26 @@
 import { createClientFromRequest } from '../base44Shim.js';
 import Stripe from 'npm:stripe@14.11.0';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'), {
   apiVersion: '2023-10-16',
 });
 
 Deno.serve(async (req) => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
     if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     const { name, description } = await req.json();
 
     if (!name) {
-      return Response.json({ error: 'Name is required' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'Name is required' }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     // Create product in Stripe
@@ -37,28 +40,17 @@ Deno.serve(async (req) => {
       details: `Product ID: ${product.id}`
     });
 
-    return Response.json({
+    return new Response(JSON.stringify({
       success: true,
       product_id: product.id,
       product
-    });
+    }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
   } catch (error) {
     console.error('Error creating Stripe product:', error);
-    return Response.json({
+    return new Response(JSON.stringify({
       success: false,
       error: error.message
-    }, { status: 500 });
+    }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
   }
-});
-
-// === MIGRATION: Remove base44Shim.js, use official Supabase client, SB_ env, and return unauthorized for now ===
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-serve(async (req) => {
-  return new Response(
-    JSON.stringify({ error: "unauthorized" }),
-    { status: 401, headers: { "Content-Type": "application/json" } }
-  );
 });

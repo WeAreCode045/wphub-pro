@@ -1,22 +1,15 @@
 import { createClientFromRequest } from '../base44Shim.js';
-
-const CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const corsResponse = handleCors(req);
+    if (corsResponse) return corsResponse;
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
         if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
         }
 
         const { site_id } = await req.json();
@@ -25,13 +18,13 @@ Deno.serve(async (req) => {
         console.log('[updateSiteData] Site ID:', site_id);
 
         if (!site_id) {
-            return Response.json({ error: 'Missing site_id' }, { status: 400 });
+            return new Response(JSON.stringify({ error: 'Missing site_id' }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
         }
 
         // Get site details
         const sites = await base44.entities.Site.filter({ id: site_id });
         if (sites.length === 0) {
-            return Response.json({ error: 'Site not found' }, { status: 404 });
+            return new Response(JSON.stringify({ error: 'Site not found' }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
         }
         const site = sites[0];
 
@@ -54,10 +47,10 @@ Deno.serve(async (req) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('[updateSiteData] Connector error:', errorText);
-            return Response.json({ 
+            return new Response(JSON.stringify({ 
                 success: false,
                 error: `Connector error: ${response.status} - ${errorText}` 
-            }, { status: 500 });
+            }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
         }
 
         const result = await response.json();
@@ -83,9 +76,9 @@ Deno.serve(async (req) => {
 
     } catch (error) {
         console.error('[updateSiteData] ❌ ERROR:', error.message);
-        return Response.json({ 
+        return new Response(JSON.stringify({ 
             success: false,
             error: error.message 
-        }, { status: 500 });
+        }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 });

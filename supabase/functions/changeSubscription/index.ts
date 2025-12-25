@@ -3,30 +3,23 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // @deno-types="npm:@types/stripe"
 import Stripe from "https://esm.sh/stripe@12.6.0?target=deno";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function jsonResponse(body: any, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
   // Require authentication
   const authHeader = req.headers.get("authorization") || "";
   const jwt = authHeader.replace(/^Bearer /i, "");
   if (!jwt) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS_HEADERS });
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
   }
 
   // Supabase client (service role)
@@ -37,7 +30,7 @@ serve(async (req) => {
   // Stripe client
   const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeSecret) {
-    return new Response(JSON.stringify({ error: "Stripe secret key not configured" }), { status: 500, headers: CORS_HEADERS });
+    return new Response(JSON.stringify({ error: "Stripe secret key not configured" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
   }
   const stripe = new Stripe(stripeSecret, { apiVersion: "2022-11-15" });
 
@@ -45,7 +38,7 @@ serve(async (req) => {
     const body = await req.json();
     const { user_id, action, new_plan_id, billing_interval } = body;
     if (!user_id || !action || !new_plan_id || !billing_interval) {
-      return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: CORS_HEADERS });
+      return new Response(JSON.stringify({ error: "Missing required parameters" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     // Fetch user and current subscription

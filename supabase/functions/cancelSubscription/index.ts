@@ -1,34 +1,27 @@
 import Stripe from 'npm:stripe';
 import { authMeWithToken, extractBearerFromReq, jsonResponse } from '../_helpers.ts';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '');
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const token = extractBearerFromReq(req);
     const user = await authMeWithToken(token);
-    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
 
     const supa = Deno.env.get('SB_URL')?.replace(/\/$/, '') || '';
     const serviceKey = Deno.env.get('SB_SERVICE_ROLE_KEY');
 
     const subsRes = await fetch(`${supa}/rest/v1/user_subscriptions?user_id=eq.${encodeURIComponent(String(user.id))}&or=(status.eq.active,status.eq.trialing)`, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
     const subscriptions = subsRes.ok ? await subsRes.json() : [];
-    if (!subscriptions || subscriptions.length === 0) return jsonResponse({ error: 'No active subscription found' }, 404);
+    if (!subscriptions || subscriptions.length === 0) return jsonResponse({ error: 'No active subscription found' }, 404, corsHeaders);
 
     const currentSubscription = subscriptions[0];
-    if (currentSubscription.is_manual) return jsonResponse({ error: 'Manual subscriptions must be canceled by an administrator' }, 400);
-    if (!currentSubscription.stripe_subscription_id) return jsonResponse({ error: 'No Stripe subscription found' }, 404);
+    if (currentSubscription.is_manual) return jsonResponse({ error: 'Manual subscriptions must be canceled by an administrator' }, 400, corsHeaders);
+    if (!currentSubscription.stripe_subscription_id) return jsonResponse({ error: 'No Stripe subscription found' }, 404, corsHeaders);
 
     const canceledSubscription = await stripe.subscriptions.update(currentSubscription.stripe_subscription_id, { cancel_at_period_end: true });
 
@@ -36,10 +29,10 @@ Deno.serve(async (req: Request) => {
 
     await fetch(`${supa}/rest/v1/activity_logs`, { method: 'POST', headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ user_email: user.email, action: 'Abonnement opgezegd (eindigt aan het einde van de periode)', entity_type: 'user', entity_id: user.id }) });
 
-    return jsonResponse({ success: true, message: 'Subscription will be canceled at the end of the billing period', cancels_at: new Date((canceledSubscription.cancel_at || 0) * 1000).toISOString() });
+    return jsonResponse({ success: true, message: 'Subscription will be canceled at the end of the billing period', cancels_at: new Date((canceledSubscription.cancel_at || 0) * 1000).toISOString() }, 200, corsHeaders);
   } catch (err:any) {
     console.error('cancelSubscription error', err);
-    return jsonResponse({ error: err.message || String(err) }, 500);
+    return jsonResponse({ error: err.message || String(err) }, 500, corsHeaders);
   }
 });
 

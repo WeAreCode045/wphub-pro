@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createClientFromRequest } from '../base44Shim.js';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function getSupabaseClientOrShim(req: Request) {
   const url = Deno.env.get('SB_URL') || Deno.env.get('SUPABASE_URL');
@@ -14,17 +15,9 @@ function getSupabaseClientOrShim(req: Request) {
   return createClientFromRequest(req);
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const base44 = getSupabaseClientOrShim(req);
     // Require Bearer token auth
@@ -40,12 +33,12 @@ serve(async (req: Request) => {
       }
     }
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const { product_id, amount, currency, interval } = await req.json();
     if (!product_id || !amount || !currency || !interval) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: corsHeaders });
     }
 
     // Here you would call Stripe API to create the price (stubbed for now)
@@ -66,8 +59,8 @@ serve(async (req: Request) => {
       details: `Price ID: ${price.id}, Amount: ${amount / 100} ${currency}, Interval: ${interval}`
     });
 
-    return new Response(JSON.stringify({ success: true, price_id: price.id, price }), { headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true, price_id: price.id, price }), { status: 200, headers: corsHeaders });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error?.message || String(error) }), { status: 500, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ error: error?.message || String(error) }), { status: 500, headers: corsHeaders });
   }
 });

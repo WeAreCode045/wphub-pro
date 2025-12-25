@@ -4,26 +4,18 @@ import { corsHeaders, handleCors } from '../_shared/cors.ts';
 function jsonResponse(body: any, status = 200) {
     return new Response(JSON.stringify(body), {
         status,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
     });
 }
 
-const CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Content-Type": "application/json"
-};
-
 Deno.serve(async (req: Request) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const corsResponse = handleCors(req);
+    if (corsResponse) return corsResponse;
     // Require authentication
     const authHeader = req.headers.get("authorization") || "";
     const jwt = authHeader.replace(/^Bearer /i, "");
     if (!jwt) {
-        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS_HEADERS });
+        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     // Supabase client (service role)

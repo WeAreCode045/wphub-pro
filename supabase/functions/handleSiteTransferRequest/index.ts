@@ -1,22 +1,15 @@
 import { createClientFromRequest } from '../base44Shim.js';
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     const { 
@@ -27,37 +20,37 @@ Deno.serve(async (req) => {
     } = await req.json();
 
     if (!message_id || !action) {
-      return Response.json({ 
+      return new Response(JSON.stringify({ 
         error: 'Message ID en actie zijn verplicht' 
-      }, { status: 400 });
+      }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     if (!['accept', 'reject'].includes(action)) {
-      return Response.json({ 
+      return new Response(JSON.stringify({ 
         error: 'Ongeldige actie. Gebruik "accept" of "reject"' 
-      }, { status: 400 });
+      }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     // Get the transfer request message
     const message = await base44.asServiceRole.entities.Message.get(message_id);
 
     if (!message || message.category !== 'site_transfer_request') {
-      return Response.json({ 
+      return new Response(JSON.stringify({ 
         error: 'Overdrachtverzoek niet gevonden' 
-      }, { status: 404 });
+      }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     if (message.status !== 'open') {
-      return Response.json({ 
+      return new Response(JSON.stringify({ 
         error: 'Dit overdrachtverzoek is al afgehandeld' 
-      }, { status: 400 });
+      }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     // Verify user is the recipient (site owner)
     if (message.recipient_id !== user.id) {
-      return Response.json({ 
+      return new Response(JSON.stringify({ 
         error: 'Je bent niet gemachtigd om dit verzoek af te handelen' 
-      }, { status: 403 });
+      }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     const { site_id, requesting_user_id, requesting_user_name, requesting_user_email } = message.context;
@@ -67,9 +60,9 @@ Deno.serve(async (req) => {
     const requestingUser = await base44.asServiceRole.entities.User.get(requesting_user_id);
 
     if (!site || !requestingUser) {
-      return Response.json({ 
+      return new Response(JSON.stringify({ 
         error: 'Site of aanvragende gebruiker niet gevonden' 
-      }, { status: 404 });
+      }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     if (action === 'reject') {

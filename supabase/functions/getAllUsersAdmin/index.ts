@@ -1,20 +1,13 @@
 import { authMeWithToken, extractBearerFromReq, jsonResponse } from '../_helpers.ts';
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const token = extractBearerFromReq(req);
     const caller = await authMeWithToken(token);
-    if (!caller) return jsonResponse({ error: 'Unauthorized' }, 401);
+    if (!caller) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
 
     // Check if caller is admin by fetching from users table
     const supa = Deno.env.get('SB_URL')?.replace(/\/$/, '') || '';
@@ -23,10 +16,10 @@ Deno.serve(async (req: Request) => {
     const adminRes = await fetch(`${supa}/rest/v1/users?id=eq.${encodeURIComponent(caller.id)}`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
     });
-    if (!adminRes.ok) return jsonResponse({ error: 'Failed to verify admin' }, 500);
+    if (!adminRes.ok) return jsonResponse({ error: 'Failed to verify admin' }, 500, corsHeaders);
     const adminArr = await adminRes.json();
     const admin = adminArr?.[0];
-    if (!admin || admin.role !== 'admin') return jsonResponse({ error: 'Admin access required' }, 403);
+    if (!admin || admin.role !== 'admin') return jsonResponse({ error: 'Admin access required' }, 403, corsHeaders);
 
     // Get query parameters
     const url = new URL(req.url);
@@ -67,7 +60,7 @@ Deno.serve(async (req: Request) => {
 
     if (!usersRes.ok) {
       const txt = await usersRes.text().catch(()=>'');
-      return jsonResponse({ error: `Failed to fetch users: ${txt}` }, 500);
+      return jsonResponse({ error: `Failed to fetch users: ${txt}` }, 500, corsHeaders);
     }
 
     const users = await usersRes.json();

@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createClientFromRequest } from '../base44Shim.js';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function getSupabaseClientOrShim(req: Request) {
   const url = Deno.env.get('SB_URL') || Deno.env.get('SUPABASE_URL');
@@ -14,17 +15,9 @@ function getSupabaseClientOrShim(req: Request) {
   return createClientFromRequest(req);
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const base44 = getSupabaseClientOrShim(req);
     // Require Bearer token auth
@@ -40,18 +33,18 @@ serve(async (req: Request) => {
       }
     }
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const { api_key, wp_version, plugins, site_url } = await req.json();
     if (!api_key) {
-      return new Response(JSON.stringify({ error: 'API key is required' }), { status: 400, headers: CORS_HEADERS });
+      return new Response(JSON.stringify({ error: 'API key is required' }), { status: 400, headers: corsHeaders });
     }
 
     // Find site by API key
     const sites = await base44.asServiceRole.entities.Site.filter({ api_key });
     if (!sites || sites.length === 0) {
-      return new Response(JSON.stringify({ error: 'Invalid API key' }), { status: 401, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ error: 'Invalid API key' }), { status: 401, headers: corsHeaders });
     }
     const site = sites[0];
     await base44.asServiceRole.entities.Site.update(site.id, {
@@ -81,8 +74,9 @@ serve(async (req: Request) => {
         }
       }
     }
-    return new Response(JSON.stringify({ success: true, message: 'Site data synchronized successfully', site_id: site.id }), { headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true, message: 'Site data synchronized successfully', site_id: site.id }), { status: 200, headers: corsHeaders });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error?.message || String(error) }), { status: 500, headers: { 'content-type': 'application/json' } });
+    const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to sync site data');
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: corsHeaders });
   }
 });

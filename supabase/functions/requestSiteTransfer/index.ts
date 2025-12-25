@@ -1,15 +1,19 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req) => {
+    const cors = handleCors(req);
+    if (cors) return cors;
+    
     // Require authentication
     const authHeader = req.headers.get("authorization") || "";
     const jwt = authHeader.replace(/^Bearer /i, "");
     if (!jwt) {
         return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
-            headers: { "Content-Type": "application/json" },
+            headers: corsHeaders,
         });
     }
 
@@ -23,7 +27,7 @@ serve(async (req) => {
         if (!site_id || !user_id) {
             return new Response(JSON.stringify({ error: "Missing required parameters" }), {
                 status: 400,
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...corsHeaders },
             });
         }
 
@@ -33,7 +37,7 @@ serve(async (req) => {
         if (siteError || !site || userError || !user) {
             return new Response(JSON.stringify({ error: "Site or user not found" }), {
                 status: 404,
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...corsHeaders },
             });
         }
 
@@ -51,7 +55,7 @@ serve(async (req) => {
         if (pendingRequest) {
             return new Response(
                 JSON.stringify({ error: "Er is al een openstaand overdrachtverzoek voor deze site" }),
-                { status: 400, headers: { "Content-Type": "application/json" } }
+                { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
             );
         }
 
@@ -71,7 +75,7 @@ serve(async (req) => {
         if (!ownerUser) {
             return new Response(
                 JSON.stringify({ error: "Eigenaar van de site niet gevonden" }),
-                { status: 404, headers: { "Content-Type": "application/json" } }
+                { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
             );
         }
 
@@ -106,7 +110,7 @@ serve(async (req) => {
         if (messageError || !message) {
             return new Response(
                 JSON.stringify({ error: "Failed to create transfer request message" }),
-                { status: 500, headers: { "Content-Type": "application/json" } }
+                { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
             );
         }
 
@@ -134,7 +138,7 @@ serve(async (req) => {
 
         return new Response(
             JSON.stringify({ success: true, message: "Overdrachtverzoek succesvol verzonden", message_id: message.id }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
+            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
     } catch (error) {
         return new Response(
