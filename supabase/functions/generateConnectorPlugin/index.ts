@@ -99,16 +99,6 @@ class WP_Plugin_Hub_Connector {
       .wphub-info p { margin: 0; color: #0369a1; }
     ');
   }
-
-  public function admin_page() {
-    echo '<div class="wrap wphub-wrap">';
-    echo '<div class="wphub-card">';
-    echo '<h2><span class="dashicons dashicons-cloud"></span> WP Plugin Hub Connector</h2>';
-    echo '<p style="color: #64748b;">Beheer je plugins en themes centraal via het WP Plugin Hub dashboard.</p>';
-    echo '<div class="wphub-info"><p><strong>Dashboard:</strong> <a href="' . esc_url($this->platform_url) . '" target="_blank">' . esc_html($this->platform_url) . '</a></p></div>';
-    echo '</div>';
-    echo '</div>';
-  }
     
   public function register_rest_routes() {
     register_rest_route('wphub/v1', '/ping', array(
