@@ -86,59 +86,20 @@ class WPPluginHubConnector {
     }
     
     public function handle_get_wp_version($request) {
-        $result = $this->exec_wp_cli('core version');
-        
-        if ($result['success']) {
-            return new WP_REST_Response(array(
-                'success' => true,
-                'wp_version' => trim($result['output']),
-                'message' => 'WordPress version retrieved'
-            ), 200);
-        } else {
-            return new WP_REST_Response(array(
-                'success' => false,
-                'error' => $result['output']
-            ), 500);
-        }
-    }
-    
-    public function handle_install_plugin($request) {
-        $body = $request->get_json_params();
-        $plugin_slug = $body['plugin_slug'];
-        $file_url = $body['file_url'];
-        $version = isset($body['version']) ? $body['version'] : null;
-        
-        error_log('WP Plugin Hub: Installing plugin: ' . $plugin_slug . ' from ' . $file_url);
-        
-        $result = $this->exec_wp_cli('plugin install ' . escapeshellarg($file_url) . ' --force --format=json');
-        
-        if (!$result['success']) {
-            return new WP_REST_Response(array(
-                'success' => false,
-                'error' => $result['output']
-            ), 500);
-        }
-        
-        // Parse JSON response
-        $data = json_decode($result['output'], true);
-        
-        if (is_array($data) && count($data) > 0) {
-            $plugin_data = $data[0];
-            
-            return new WP_REST_Response(array(
-                'success' => $plugin_data['status'] === 'success',
-                'message' => 'Plugin installed successfully',
-                'version' => isset($plugin_data['version']) ? $plugin_data['version'] : $version,
-                'slug' => isset($plugin_data['name']) ? $plugin_data['name'] : $plugin_slug
-            ), 200);
-        }
+        global $wp_version;
         
         return new WP_REST_Response(array(
             'success' => true,
-            'message' => 'Plugin installed',
-            'version' => $version,
-            'slug' => $plugin_slug
+            'wp_version' => $wp_version,
+            'message' => 'WordPress version retrieved'
         ), 200);
+    }
+    
+    public function handle_install_plugin($request) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error' => 'Plugin installation via REST API is not supported in this version'
+        ), 501);
     }
     
     public function handle_activate_plugin($request) {
@@ -147,30 +108,40 @@ class WPPluginHubConnector {
         
         error_log('WP Plugin Hub: Activating plugin: ' . $plugin_slug);
         
-        $result = $this->exec_wp_cli('plugin activate ' . escapeshellarg($plugin_slug) . ' --format=json');
-        
-        if (!$result['success']) {
-            return new WP_REST_Response(array(
-                'success' => false,
-                'error' => $result['output']
-            ), 500);
+        if (!function_exists('activate_plugin')) {
+            require_once(ABSPATH . 'wp-admin/includes/plugin.php');
         }
         
-        // Parse JSON response
-        $data = json_decode($result['output'], true);
+        // Find the plugin file
+        $plugins = get_plugins();
+        $plugin_file = null;
         
-        if (is_array($data) && count($data) > 0) {
-            $plugin_data = $data[0];
-            
+        foreach ($plugins as $file => $data) {
+            if (dirname($file) === $plugin_slug || $file === $plugin_slug) {
+                $plugin_file = $file;
+                break;
+            }
+        }
+        
+        if (!$plugin_file) {
             return new WP_REST_Response(array(
-                'success' => $plugin_data['status'] === 'success',
-                'message' => 'Plugin activated successfully'
-            ), 200);
+                'success' => false,
+                'error' => 'Plugin not found'
+            ), 404);
+        }
+        
+        $result = activate_plugin($plugin_file);
+        
+        if (is_wp_error($result)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $result->get_error_message()
+            ), 500);
         }
         
         return new WP_REST_Response(array(
             'success' => true,
-            'message' => 'Plugin activated'
+            'message' => 'Plugin activated successfully'
         ), 200);
     }
     
@@ -180,109 +151,43 @@ class WPPluginHubConnector {
         
         error_log('WP Plugin Hub: Deactivating plugin: ' . $plugin_slug);
         
-        $result = $this->exec_wp_cli('plugin deactivate ' . escapeshellarg($plugin_slug) . ' --format=json');
+        if (!function_exists('deactivate_plugin')) {
+            require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+        }
         
-        if (!$result['success']) {
+        // Find the plugin file
+        $plugins = get_plugins();
+        $plugin_file = null;
+        
+        foreach ($plugins as $file => $data) {
+            if (dirname($file) === $plugin_slug || $file === $plugin_slug) {
+                $plugin_file = $file;
+                break;
+            }
+        }
+        
+        if (!$plugin_file) {
             return new WP_REST_Response(array(
                 'success' => false,
-                'error' => $result['output']
-            ), 500);
+                'error' => 'Plugin not found'
+            ), 404);
         }
         
-        // Parse JSON response
-        $data = json_decode($result['output'], true);
-        
-        if (is_array($data) && count($data) > 0) {
-            $plugin_data = $data[0];
-            
-            return new WP_REST_Response(array(
-                'success' => $plugin_data['status'] === 'success',
-                'message' => 'Plugin deactivated successfully'
-            ), 200);
-        }
+        deactivate_plugin($plugin_file);
         
         return new WP_REST_Response(array(
             'success' => true,
-            'message' => 'Plugin deactivated'
+            'message' => 'Plugin deactivated successfully'
         ), 200);
     }
     
     public function handle_uninstall_plugin($request) {
-        $body = $request->get_json_params();
-        $plugin_slug = $body['plugin_slug'];
-        
-        error_log('WP Plugin Hub: Uninstalling plugin: ' . $plugin_slug);
-        
-        // First deactivate
-        $this->exec_wp_cli('plugin deactivate ' . escapeshellarg($plugin_slug));
-        
-        // Then delete
-        $result = $this->exec_wp_cli('plugin delete ' . escapeshellarg($plugin_slug) . ' --format=json');
-        
-        if (!$result['success']) {
-            return new WP_REST_Response(array(
-                'success' => false,
-                'error' => $result['output']
-            ), 500);
-        }
-        
-        // Parse JSON response
-        $data = json_decode($result['output'], true);
-        
-        if (is_array($data) && count($data) > 0) {
-            $plugin_data = $data[0];
-            
-            return new WP_REST_Response(array(
-                'success' => $plugin_data['status'] === 'success',
-                'message' => 'Plugin uninstalled successfully'
-            ), 200);
-        }
-        
         return new WP_REST_Response(array(
-            'success' => true,
-            'message' => 'Plugin uninstalled'
-        ), 200);
+            'success' => false,
+            'error' => 'Plugin deletion via REST API is not supported in this version'
+        ), 501);
     }
     
-    private function exec_wp_cli($command, $log = true) {
-        if (!class_exists('WP_CLI')) {
-            if ($log) {
-                error_log('WP Plugin Hub: WP-CLI internal API not available');
-            }
-            return array('success' => false, 'output' => 'WP-CLI not available');
-        }
-        
-        if ($log) {
-            error_log('WP Plugin Hub: Executing WP-CLI: ' . $command);
-        }
-        
-        ob_start();
-        
-        try {
-            WP_CLI::run_command(explode(' ', $command));
-            $output = ob_get_clean();
-            
-            if ($log) {
-                error_log('WP Plugin Hub: WP-CLI output: ' . $output);
-            }
-            
-            return array(
-                'success' => true,
-                'output' => $output
-            );
-        } catch (Exception $e) {
-            ob_end_clean();
-            
-            if ($log) {
-                error_log('WP Plugin Hub: WP-CLI error: ' . $e->getMessage());
-            }
-            
-            return array(
-                'success' => false,
-                'output' => $e->getMessage()
-            );
-        }
-    }
     
     public function add_admin_menu() {
         add_options_page(

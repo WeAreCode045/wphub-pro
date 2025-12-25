@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
@@ -33,70 +32,71 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Site missing URL or API key' }), { status: 400, headers: corsHeaders });
     }
 
-    // Get current plugin list to determine state
-    const listUrl = `${site_url}/wp-json/wp/v2/plugins`;
-    const listRes = await fetch(listUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${api_key}`
-      }
+    // Check if custom connector endpoints are available
+    const pingUrl = `${site_url}/wp-json/wphub/v1/ping`;
+    const pingRes = await fetch(pingUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key })
     });
 
-    let currentPlugins: any[] = [];
-    if (listRes.ok) {
-      const listText = await listRes.text();
-      try {
-        currentPlugins = JSON.parse(listText);
-      } catch { }
+    if (!pingRes.ok) {
+      return new Response(JSON.stringify({ 
+        error: 'WP Plugin Hub Connector is not properly configured on this site. Please update the connector plugin and try again.',
+        details: 'The connector endpoints are not responding correctly'
+      }), { status: 502, headers: corsHeaders });
     }
 
-    const currentPlugin = currentPlugins.find((p: any) => 
-      p.plugin && (p.plugin.includes(plugin_slug) || p.plugin.startsWith(plugin_slug + '/'))
-    );
+    // Get current plugin status
+    const pluginsUrl = `${site_url}/wp-json/wphub/v1/getInstalledPlugins`;
+    const pluginsRes = await fetch(pluginsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key })
+    });
 
-    const isCurrentlyActive = currentPlugin?.status === 'active';
-    const action = isCurrentlyActive ? 'deactivatePlugin' : 'activatePlugin';
+    let isActive = false;
+    if (pluginsRes.ok) {
+      const pluginsData = await pluginsRes.json();
+      const plugins = pluginsData.plugins || [];
+      const plugin = plugins.find((p: any) => p.slug === plugin_slug || p.slug.startsWith(plugin_slug + '/'));
+      if (plugin) {
+        isActive = plugin.status === 'active';
+      }
+    }
 
-    // Try custom connector endpoint first
-    let toggleUrl = `${site_url}/wp-json/wphub/v1/${action}`;
-    let toggleRes = await fetch(toggleUrl, {
+    // Determine which endpoint to call
+    const endpoint = isActive ? 'deactivatePlugin' : 'activatePlugin';
+    const toggleUrl = `${site_url}/wp-json/wphub/v1/${endpoint}`;
+
+    // Call toggle endpoint
+    const toggleRes = await fetch(toggleUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_key, plugin_slug })
     });
 
-    let toggleText = await toggleRes.text();
-    let toggleData: any;
-    try { toggleData = JSON.parse(toggleText); } catch { toggleData = { raw: toggleText }; }
-
-    // If custom endpoint not found, try standard WordPress endpoint
-    if (toggleRes.status === 404) {
-      toggleUrl = `${site_url}/wp-json/wp/v2/plugins/${encodeURIComponent(plugin_slug)}`;
-      toggleRes = await fetch(toggleUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${api_key}`
-        },
-        body: JSON.stringify({ status: isCurrentlyActive ? 'inactive' : 'active' })
-      });
-
-      toggleText = await toggleRes.text();
-      try { toggleData = JSON.parse(toggleText); } catch { toggleData = { raw: toggleText }; }
-    }
-
     if (!toggleRes.ok) {
-      return new Response(JSON.stringify({ error: 'Failed to toggle plugin', status: toggleRes.status, details: toggleData }), { status: 502, headers: corsHeaders });
+      const errorData = await toggleRes.text();
+      console.error(`[togglePluginState] ${endpoint} failed:`, toggleRes.status, errorData);
+      
+      return new Response(JSON.stringify({ 
+        error: `Failed to ${endpoint === 'activatePlugin' ? 'activate' : 'deactivate'} plugin. Please ensure the connector plugin is properly installed and configured.`,
+        status: toggleRes.status
+      }), { status: 502, headers: corsHeaders });
     }
 
     return new Response(JSON.stringify({ 
-      success: true, 
-      plugin_slug, 
-      action,
-      new_status: isCurrentlyActive ? 'inactive' : 'active'
+      success: true,
+      plugin_slug,
+      action: endpoint,
+      new_status: isActive ? 'inactive' : 'active'
     }), { status: 200, headers: corsHeaders });
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error('[togglePluginState] Error:', msg);
     return new Response(JSON.stringify({ error: msg }), { status: 500, headers: corsHeaders });
-  }});
+  }
+});
+
