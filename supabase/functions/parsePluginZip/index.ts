@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function jsonResponse(body: any, status = 200) {
     return new Response(JSON.stringify(body), {
@@ -8,22 +9,15 @@ function jsonResponse(body: any, status = 200) {
     });
 }
 
-const CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Content-Type": "application/json"
-};
 
 serve(async (req) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const cors = handleCors(req);
+    if (cors) return cors;
     // Require authentication
     const authHeader = req.headers.get("authorization") || "";
     const jwt = authHeader.replace(/^Bearer /i, "");
     if (!jwt) {
-        return jsonResponse({ error: "unauthorized" }, 401);
+        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
     // Supabase client (service role)
@@ -36,13 +30,13 @@ serve(async (req) => {
         const body = await req.json();
         const { file_url } = body;
         if (!file_url) {
-            return jsonResponse({ error: "Missing required parameter: file_url" }, 400);
+            return new Response(JSON.stringify({ error: "Missing required parameter: file_url" }), { status: 400, headers: corsHeaders });
         }
 
         // Download the zip file
         const response = await fetch(file_url);
         if (!response.ok) {
-            return jsonResponse({ error: "Failed to download zip file" }, 400);
+            return new Response(JSON.stringify({ error: "Failed to download zip file" }), { status: 400, headers: corsHeaders });
         }
         const uint8Array = new Uint8Array(await response.arrayBuffer());
 

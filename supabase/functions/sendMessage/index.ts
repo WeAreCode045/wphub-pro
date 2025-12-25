@@ -1,17 +1,11 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
-
+// ...existing code...
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+  const cors = handleCors(req);
+  if (cors) return cors;
 
   // Require authentication
   const authHeader = req.headers.get("authorization") || "";
@@ -19,7 +13,7 @@ Deno.serve(async (req: Request) => {
   if (!jwt) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
     });
   }
 
@@ -35,7 +29,7 @@ Deno.serve(async (req: Request) => {
     if (!subject || !message || !sender_id || !recipient_id || !recipient_type) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
         status: 400,
-        headers: CORS_HEADERS,
+        headers: corsHeaders,
       });
     }
 

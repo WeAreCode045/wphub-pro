@@ -1,4 +1,5 @@
 import { createClientFromRequest } from '../base44Shim.js';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 type WPTheme = {
   name?: string;
@@ -20,16 +21,10 @@ type WPTheme = {
   last_updated?: string;
 };
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
   try {
     const base44 = createClientFromRequest(req);

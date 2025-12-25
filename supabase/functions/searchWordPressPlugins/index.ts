@@ -1,17 +1,11 @@
+
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Content-Type": "application/json"
-};
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req: Request) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const cors = handleCors(req);
+    if (cors) return cors;
     try {
         // Create Supabase client from env
         const supabase = createClient(
@@ -29,7 +23,7 @@ serve(async (req: Request) => {
         }
 
         if (!user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized', code: 401, message: 'Invalid JWT' }), { status: 401, headers: CORS_HEADERS });
+            return new Response(JSON.stringify({ error: 'Unauthorized', code: 401, message: 'Invalid JWT' }), { status: 401, headers: corsHeaders });
         }
 
         // Support both POST (JSON body) and GET (query params)
@@ -50,7 +44,7 @@ serve(async (req: Request) => {
         }
 
         if (!search) {
-            return new Response(JSON.stringify({ error: 'Search query is required' }), { status: 400, headers: CORS_HEADERS });
+            return new Response(JSON.stringify({ error: 'Search query is required' }), { status: 400, headers: corsHeaders });
         }
 
         const wpApiUrl = `https://api.wordpress.org/plugins/info/1.2/?action=query_plugins&request[search]=${encodeURIComponent(search)}&request[page]=${page}&request[per_page]=${per_page}`;
@@ -83,9 +77,9 @@ serve(async (req: Request) => {
             last_updated: plugin.last_updated
         })) || [];
 
-        return new Response(JSON.stringify({ success: true, info: data.info, plugins }), { headers: CORS_HEADERS });
+        return new Response(JSON.stringify({ success: true, info: data.info, plugins }), { headers: corsHeaders });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return new Response(JSON.stringify({ error: message }), { status: 500, headers: CORS_HEADERS });
+        return new Response(JSON.stringify({ error: message }), { status: 500, headers: corsHeaders });
     }
 });
