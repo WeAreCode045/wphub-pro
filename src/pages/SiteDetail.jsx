@@ -128,7 +128,9 @@ export default function SiteDetail() {
     queryFn: async () => {
       if (!site?.url || !site?.api_key) return [];
       const response = await base44.functions.invoke('listSitePlugins', { site_url: site.url, api_key: site.api_key });
-      return response.data.plugins || [];
+      const plugins = response.data.plugins || [];
+      // Filter out plugins with invalid slugs (e.g., ".", "/", "..")
+      return plugins.filter(p => p.slug && p.slug !== '.' && !p.slug.startsWith('/') && !p.slug.includes('..'));
     },
     enabled: !!siteId && !!site?.url && !!site?.api_key,
     refetchInterval: 30000,
@@ -149,7 +151,9 @@ export default function SiteDetail() {
     queryFn: async () => {
       if (!site?.url || !site?.api_key) return [];
       const response = await base44.functions.invoke('listSiteThemes', { site_url: site.url, api_key: site.api_key });
-      return response.data.themes || [];
+      const themes = response.data.themes || [];
+      // Filter out themes with invalid slugs (e.g., ".", "/", "..")
+      return themes.filter(t => t.slug && t.slug !== '.' && !t.slug.startsWith('/') && !t.slug.includes('..'));
     },
     enabled: !!siteId && !!site?.url && !!site?.api_key,
     refetchInterval: 30000,
