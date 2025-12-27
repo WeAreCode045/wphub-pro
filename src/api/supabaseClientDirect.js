@@ -185,6 +185,222 @@ const entities = {
     }
   },
 
+  SubscriptionPlan: {
+    async list(orderBy = 'sort_order', limit = 1000) {
+      let query = supabase.from('subscription_plans').select('*');
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async get(id) {
+      const { data, error } = await supabase.from('subscription_plans').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    },
+
+    async filter(filters, orderBy = 'sort_order', limit = 1000) {
+      let query = supabase.from('subscription_plans').select('*');
+      Object.entries(filters || {}).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async create(data) {
+      const { data: result, error } = await supabase.from('subscription_plans').insert(data).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async update(id, data) {
+      const { data: result, error } = await supabase.from('subscription_plans').update(data).eq('id', id).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async delete(id) {
+      const { error } = await supabase.from('subscription_plans').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  PlanGroup: {
+    async list(orderBy = 'sort_order', limit = 1000) {
+      let query = supabase.from('plan_groups').select('*');
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async get(id) {
+      const { data, error } = await supabase.from('plan_groups').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    },
+
+    async filter(filters, orderBy = 'sort_order', limit = 1000) {
+      let query = supabase.from('plan_groups').select('*');
+      Object.entries(filters || {}).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async create(data) {
+      const { data: result, error } = await supabase.from('plan_groups').insert(data).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async update(id, data) {
+      const { data: result, error } = await supabase.from('plan_groups').update(data).eq('id', id).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async delete(id) {
+      const { error } = await supabase.from('plan_groups').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  UserSubscription: {
+    async list(orderBy = '-created_at', limit = 1000) {
+      let query = supabase.from('user_subscriptions').select('*');
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async get(id) {
+      const { data, error } = await supabase.from('user_subscriptions').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    },
+
+    async filter(filters, orderBy = '-created_at', limit = 1000) {
+      let query = supabase.from('user_subscriptions').select('*');
+      Object.entries(filters || {}).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async create(data) {
+      const { data: result, error } = await supabase.from('user_subscriptions').insert(data).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async update(id, data) {
+      const { data: result, error } = await supabase.from('user_subscriptions').update(data).eq('id', id).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async delete(id) {
+      const { error } = await supabase.from('user_subscriptions').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  Invoice: {
+    async list(orderBy = '-created_at', limit = 1000) {
+      let query = supabase.from('invoices').select('*');
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async get(id) {
+      const { data, error } = await supabase.from('invoices').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    },
+
+    async filter(filters, orderBy = '-created_at', limit = 1000) {
+      let query = supabase.from('invoices').select('*');
+      Object.entries(filters || {}).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      if (orderBy) {
+        const desc = orderBy.startsWith('-');
+        const field = desc ? orderBy.slice(1) : orderBy;
+        query = query.order(field, { ascending: !desc });
+      }
+      if (limit) query = query.limit(limit);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async create(data) {
+      const { data: result, error } = await supabase.from('invoices').insert(data).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async update(id, data) {
+      const { data: result, error } = await supabase.from('invoices').update(data).eq('id', id).select().single();
+      if (error) throw error;
+      return result;
+    },
+
+    async delete(id) {
+      const { error } = await supabase.from('invoices').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
   Team: {
     async list() {
       const { data, error } = await supabase.from('teams').select('*');
