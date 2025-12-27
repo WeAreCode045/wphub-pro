@@ -78,13 +78,13 @@ export default function Plugins() {
   const isAdmin = user?.role === "admin";
 
   const { data: plugins = [], isLoading } = useQuery({
-    queryKey: ['plugins', user?.id],
+    queryKey: ['plugins', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userPlugins = await base44.entities.Plugin.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       }, "-updated_date");
       
       return userPlugins;
@@ -96,13 +96,13 @@ export default function Plugins() {
   });
 
   const { data: allSites = [] } = useQuery({
-    queryKey: ['sites', user?.id],
+    queryKey: ['sites', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userSites = await base44.entities.Site.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       
       return userSites;
@@ -125,7 +125,7 @@ export default function Plugins() {
     mutationFn: async (file) => {
       if (!user) throw new Error("User not loaded");
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'plugins');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'plugins');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -148,7 +148,7 @@ export default function Plugins() {
       const existingPlugin = allExistingPlugins.find(p =>
         p.slug === plugin_data.slug &&
         p.owner_type === "user" &&
-        p.owner_id === user.id
+        p.owner_id === user.auth_id
       );
 
       if (existingPlugin) {
@@ -162,7 +162,7 @@ export default function Plugins() {
         author: plugin_data.author || '',
         author_url: plugin_data.author_url || '',
         owner_type: "user",
-        owner_id: user.id,
+        owner_id: user.auth_id,
         source: "upload",
         versions: [{
           version: plugin_data.version,
@@ -205,7 +205,7 @@ export default function Plugins() {
     mutationFn: async (wpPlugin) => {
       if (!user) throw new Error("User not loaded");
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'plugins');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'plugins');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -215,7 +215,7 @@ export default function Plugins() {
       const existingPlugin = allExistingPlugins.find(p =>
         p.slug === wpPlugin.slug &&
         p.owner_type === "user" &&
-        p.owner_id === user.id
+        p.owner_id === user.auth_id
       );
 
       if (existingPlugin) {
@@ -229,7 +229,7 @@ export default function Plugins() {
         author: wpPlugin.author || '',
         author_url: wpPlugin.author_profile || '',
         owner_type: "user",
-        owner_id: user.id,
+        owner_id: user.auth_id,
         source: "wplibrary",
         versions: [{
           version: wpPlugin.version,
@@ -566,7 +566,7 @@ export default function Plugins() {
   };
 
   return (
-    <FeatureGate userId={user?.id} featureType="plugins">
+    <FeatureGate userId={user?.auth_id} featureType="plugins">
       <div className="p-8 bg-gray-50 min-h-full">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Mijn Plugins</h1>

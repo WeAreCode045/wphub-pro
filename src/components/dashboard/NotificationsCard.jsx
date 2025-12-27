@@ -100,7 +100,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
         const allUsers = users.filter(u => u.id !== currentUser.id);
         const promises = allUsers.map(user => 
           base44.entities.Notification.create({
-            recipient_id: user.id,
+            recipient_id: user.auth_id,
             recipient_email: user.email,
             title: notificationData.title,
             message: notificationData.message,
@@ -176,7 +176,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
 
       // Check if user is already in members array
       const currentUser = await base44.auth.me();
-      const existingMemberIndex = currentMembers.findIndex(m => m.user_id === currentUser.id);
+      const existingMemberIndex = currentMembers.findIndex(m => m.user_id === currentUser.auth_id);
       
       let updatedMembers;
       if (existingMemberIndex !== -1) {
@@ -191,7 +191,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
         updatedMembers = [
           ...currentMembers,
           {
-            user_id: currentUser.id,
+            user_id: currentUser.auth_id,
             email: currentUser.email,
             team_role_id: invite.team_role_id,
             status: "active",
@@ -246,7 +246,7 @@ export default function NotificationsCard({ userId, userEmail, isAdmin }) {
       if (teams.length > 0) {
         const team = teams[0];
         const currentUser = await base44.auth.me();
-        const updatedMembers = (team.members || []).filter(m => m.user_id !== currentUser.id);
+        const updatedMembers = (team.members || []).filter(m => m.user_id !== currentUser.auth_id);
         await base44.entities.Team.update(team.id, { members: updatedMembers });
       }
 

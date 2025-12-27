@@ -705,7 +705,13 @@ const auth = {
         .select('*')
         .eq('email', user.email)
         .single();
-      return userData || user;
+      const merged = {
+        ...(userData || {}),
+        // Canonical Supabase Auth UUID for requests
+        auth_id: user.id,
+        email: user.email,
+      };
+      return merged;
     }
     return null;
   },

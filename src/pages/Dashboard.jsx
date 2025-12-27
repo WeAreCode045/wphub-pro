@@ -11,13 +11,13 @@ export default function Dashboard() {
   const user = useUser();
 
   const { data: plugins = [] } = useQuery({
-    queryKey: ['plugins', user?.id],
+    queryKey: ['plugins', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userPlugins = await base44.entities.Plugin.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       }, "-updated_date");
       
       return userPlugins;
@@ -29,13 +29,13 @@ export default function Dashboard() {
   });
 
   const { data: sites = [] } = useQuery({
-    queryKey: ['sites', user?.id],
+    queryKey: ['sites', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userSites = await base44.entities.Site.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       }, "-updated_date");
       
       return userSites;
@@ -53,14 +53,14 @@ export default function Dashboard() {
         {user && (
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
             <ProfileSubscriptionCard user={user} />
-            <AccountUsageCard userId={user.id} />
+            <AccountUsageCard userId={user.auth_id} />
           </div>
         )}
 
         {/* Plugin & Site Overview + Team & Project Overview */}
         <div className="grid lg:grid-cols-2 gap-6">
           <PluginSiteOverview plugins={plugins} sites={sites} allPlugins={plugins} />
-          <TeamProjectOverview userId={user?.id} />
+          <TeamProjectOverview userId={user?.auth_id} />
         </div>
       </div>
     </div>

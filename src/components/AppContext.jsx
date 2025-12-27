@@ -39,7 +39,7 @@ export const AppProvider = ({ children }) => {
       // Load user subscription
       if (currentUser?.id) {
         const subscriptions = await base44.entities.UserSubscription.filter({
-          user_id: currentUser.id,
+          user_id: currentUser.auth_id,
           status: ['active', 'trialing']
         });
         setSubscription(subscriptions.length > 0 ? subscriptions[0] : null);
@@ -49,8 +49,8 @@ export const AppProvider = ({ children }) => {
       if (currentUser?.id) {
         const allTeams = await base44.entities.Team.list();
         const teams = allTeams.filter(t =>
-          t.owner_id === currentUser.id ||
-          t.members?.some(m => m.user_id === currentUser.id && m.status === "active")
+          t.owner_id === currentUser.auth_id ||
+          t.members?.some(m => m.user_id === currentUser.auth_id && m.status === "active")
         );
         setUserTeams(teams);
         setUserTeamIds(teams.map(t => t.id));
@@ -94,7 +94,7 @@ export const AppProvider = ({ children }) => {
     
     try {
       const subscriptions = await base44.entities.UserSubscription.filter({
-        user_id: user.id,
+        user_id: user.auth_id,
         status: ['active', 'trialing']
       });
       const sub = subscriptions.length > 0 ? subscriptions[0] : null;
@@ -113,8 +113,8 @@ export const AppProvider = ({ children }) => {
     try {
       const allTeams = await base44.entities.Team.list();
       const teams = allTeams.filter(t =>
-        t.owner_id === user.id ||
-        t.members?.some(m => m.user_id === user.id && m.status === "active")
+        t.owner_id === user.auth_id ||
+        t.members?.some(m => m.user_id === user.auth_id && m.status === "active")
       );
       setUserTeams(teams);
       setUserTeamIds(teams.map(t => t.id));

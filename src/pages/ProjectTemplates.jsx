@@ -90,8 +90,8 @@ export default function ProjectTemplates() {
       if (!user) return [];
       const allTeams = await base44.entities.Team.list();
       return allTeams.filter(t => 
-        t.owner_id === user.id || 
-        t.members?.some(m => m.user_id === user.id && m.status === "active")
+        t.owner_id === user.auth_id || 
+        t.members?.some(m => m.user_id === user.auth_id && m.status === "active")
       );
     },
     enabled: !!user,
@@ -105,7 +105,7 @@ export default function ProjectTemplates() {
       const plugins = await base44.entities.Plugin.list();
       const teamIds = userTeams.map(t => t.id);
       return plugins.filter(p => 
-        (p.owner_type === "user" && p.owner_id === user.id) ||
+        (p.owner_type === "user" && p.owner_id === user.auth_id) ||
         (p.owner_type === "team" && teamIds.includes(p.owner_id)) ||
         p.shared_with_teams?.some(tid => teamIds.includes(tid))
       );

@@ -61,11 +61,11 @@ export default function MySubscription() {
   };
 
   const { data: subscription, isLoading: subLoading } = useQuery({
-    queryKey: ['my-subscription', user?.id],
+    queryKey: ['my-subscription', user?.auth_id],
     queryFn: async () => {
       if (!user) return null;
       const allSubs = await base44.entities.UserSubscription.filter({
-        user_id: user.id
+        user_id: user.auth_id
       });
       const activeSubs = allSubs.filter(s =>
         s.status === 'active' || s.status === 'trialing'
@@ -99,12 +99,12 @@ export default function MySubscription() {
 
   // Real-time usage data
   const { data: pluginsUsed = 0 } = useQuery({
-    queryKey: ['my-plugins-count', user?.id],
+    queryKey: ['my-plugins-count', user?.auth_id],
     queryFn: async () => {
       if (!user) return 0;
       const plugins = await base44.entities.Plugin.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       return plugins.length;
     },
@@ -113,12 +113,12 @@ export default function MySubscription() {
   });
 
   const { data: sitesUsed = 0 } = useQuery({
-    queryKey: ['my-sites-count', user?.id],
+    queryKey: ['my-sites-count', user?.auth_id],
     queryFn: async () => {
       if (!user) return 0;
       const sites = await base44.entities.Site.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       return sites.length;
     },
@@ -127,11 +127,11 @@ export default function MySubscription() {
   });
 
   const { data: teamsUsed = 0 } = useQuery({
-    queryKey: ['my-teams-count', user?.id],
+    queryKey: ['my-teams-count', user?.auth_id],
     queryFn: async () => {
       if (!user) return 0;
       const teams = await base44.entities.Team.filter({
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       return teams.length;
     },
@@ -140,11 +140,11 @@ export default function MySubscription() {
   });
 
   const { data: projectsUsed = 0 } = useQuery({
-    queryKey: ['my-projects-count', user?.id],
+    queryKey: ['my-projects-count', user?.auth_id],
     queryFn: async () => {
       if (!user) return 0;
       const allProjects = await base44.entities.Project.list();
-      const myTeams = await base44.entities.Team.filter({ owner_id: user.id });
+      const myTeams = await base44.entities.Team.filter({ owner_id: user.auth_id });
       const myTeamIds = myTeams.map(t => t.id);
       return allProjects.filter(p => myTeamIds.includes(p.team_id)).length;
     },
@@ -153,10 +153,10 @@ export default function MySubscription() {
   });
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ['my-invoices', user?.id],
+    queryKey: ['my-invoices', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
-      return base44.entities.Invoice.filter({ user_id: user.id }, "-created_at");
+      return base44.entities.Invoice.filter({ user_id: user.auth_id }, "-created_at");
     },
     enabled: !!user,
     initialData: [],
@@ -261,7 +261,7 @@ export default function MySubscription() {
     // For downgrades, check eligibility
     if (action === 'downgrade') {
       setIsCheckingEligibility(true);
-      const eligibility = await checkDowngradeEligibility(user.id, targetPlan);
+      const eligibility = await checkDowngradeEligibility(user.auth_id, targetPlan);
       setIsCheckingEligibility(false);
       
       if (!eligibility.allowed) {

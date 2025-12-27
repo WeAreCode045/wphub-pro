@@ -17,7 +17,7 @@ export async function checkSubscriptionLimit(userId, featureType) {
       // User not authenticated or session expired, continue with subscription check
     }
     
-    if (currentUser && currentUser.id === userId && currentUser.role === "admin") {
+    if (currentUser && currentUser.auth_id === userId && currentUser.role === "admin") {
       const currentUsage = await getCurrentUsage(userId, featureType);
       return {
         allowed: true,

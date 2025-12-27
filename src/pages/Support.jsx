@@ -222,11 +222,11 @@ export default function Support() {
   };
 
   const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ['support-tickets', user?.id],
+    queryKey: ['support-tickets', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       return base44.entities.SupportTicket.filter(
-        { submitter_id: user.id },
+        { submitter_id: user.auth_id },
         "-created_at"
       );
     },
@@ -241,7 +241,7 @@ export default function Support() {
       return base44.entities.SupportTicket.create({
         ...ticketData,
         ticket_number: ticketNumber,
-        submitter_id: user.id,
+        submitter_id: user.auth_id,
         submitter_email: user.email,
         submitter_name: user.full_name,
         last_updated: new Date().toISOString()

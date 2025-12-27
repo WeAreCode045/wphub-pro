@@ -51,14 +51,14 @@ export default function Teams() {
   const { toast } = useToast();
 
   const { data: teams = [], isLoading } = useQuery({
-    queryKey: ['teams', user?.id],
+    queryKey: ['teams', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const allTeams = await base44.entities.Team.list("-created_at");
       const userTeams = allTeams.filter(team => 
-        team.owner_id === user.id || 
-        team.members?.some(m => m.user_id === user.id && m.status === "active")
+        team.owner_id === user.auth_id || 
+        team.members?.some(m => m.user_id === user.auth_id && m.status === "active")
       );
       
       return userTeams;
@@ -73,7 +73,7 @@ export default function Teams() {
     mutationFn: async (teamData) => {
       if (!user) throw new Error("User not loaded");
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'teams');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'teams');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -82,9 +82,9 @@ export default function Teams() {
       const newTeam = await base44.entities.Team.create({
         name: teamData.name,
         description: teamData.description,
-        owner_id: user.id,
+        owner_id: user.auth_id,
         members: [{
-          user_id: user.id,
+          user_id: user.auth_id,
           email: user.email,
           team_role_id: "Owner",
           status: "active",
@@ -164,7 +164,7 @@ export default function Teams() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  const isOwner = (team) => team.owner_id === user?.id;
+  const isOwner = (team) => team.owner_id === user?.auth_id;
 
   const getMemberCount = (team) => team.members?.length || 0;
 
@@ -332,7 +332,7 @@ export default function Teams() {
   );
 
   return (
-    <FeatureGate userId={user?.id} featureType="teams">
+    <FeatureGate userId={user?.auth_id} featureType="teams">
       <div className="p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Mijn Teams</h1>

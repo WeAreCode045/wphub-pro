@@ -728,7 +728,7 @@ export default function ProjectDetail() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            {canManage && member.user_id !== user?.id && memberUser && (
+                            {canManage && member.user_id !== user?.auth_id && memberUser && (
                               <Button
                                 variant="outline"
                                 size="sm"

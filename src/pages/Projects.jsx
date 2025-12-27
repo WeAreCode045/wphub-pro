@@ -79,14 +79,14 @@ export default function Projects() {
 
   // Get user's teams
   const { data: userTeams = [] } = useQuery({
-    queryKey: ['teams', user?.id],
+    queryKey: ['teams', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const allTeams = await base44.entities.Team.list();
       const teams = allTeams.filter(t =>
-        t.owner_id === user.id ||
-        t.members?.some(m => m.user_id === user.id && m.status === "active")
+        t.owner_id === user.auth_id ||
+        t.members?.some(m => m.user_id === user.auth_id && m.status === "active")
       );
       
       return teams;
@@ -99,7 +99,7 @@ export default function Projects() {
 
   // Get all projects (personal + team projects)
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ['projects', user?.id],
+    queryKey: ['projects', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
@@ -119,13 +119,13 @@ export default function Projects() {
 
   // Get all sites for dropdown
   const { data: allSites = [] } = useQuery({
-    queryKey: ['sites', user?.id],
+    queryKey: ['sites', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userSites = await base44.entities.Site.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       
       return userSites;
@@ -138,7 +138,7 @@ export default function Projects() {
 
   // Get project templates
   const { data: templates = [] } = useQuery({
-    queryKey: ['project-templates', user?.id],
+    queryKey: ['project-templates', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       return base44.entities.ProjectTemplate.list();
@@ -154,11 +154,11 @@ export default function Projects() {
       const team = userTeams.find(t => t.id === projectData.team_id);
       if (!team) throw new Error("Team niet gevonden");
       
-      if (team.owner_id !== user.id) {
+      if (team.owner_id !== user.auth_id) {
         throw new Error("Alleen team owners kunnen projecten aanmaken");
       }
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'projects');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'projects');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -180,7 +180,7 @@ export default function Projects() {
       const newProject = await base44.entities.Project.create({
         ...projectData,
         plugins,
-        assigned_members: [{ user_id: user.id, role_on_project: "Project Lead" }],
+        assigned_members: [{ user_id: user.auth_id, role_on_project: "Project Lead" }],
         timeline_events: [],
         attachments: [],
         notes: ""
@@ -451,7 +451,7 @@ export default function Projects() {
   );
 
   return (
-    <FeatureGate userId={user?.id} featureType="projects">
+    <FeatureGate userId={user?.auth_id} featureType="projects">
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

@@ -147,8 +147,8 @@ export default function ThemeDetail() {
       if (!user) return [];
       const allTeams = await base44.entities.Team.list();
       return allTeams.filter(team =>
-        team.owner_id === user.id ||
-        team.members?.some(m => m.user_id === user.id)
+        team.owner_id === user.auth_id ||
+        team.members?.some(m => m.user_id === user.auth_id)
       );
     },
     enabled: !!user,
@@ -340,22 +340,22 @@ export default function ThemeDetail() {
 
   const mySites = allSites.filter(site => {
     if (!user) return false;
-    if (site.owner_type === "user" && site.owner_id === user.id) return true;
+    if (site.owner_type === "user" && site.owner_id === user.auth_id) return true;
     if (site.owner_type === "team") {
       const team = userTeams.find(t => t.id === site.owner_id);
-      if (team?.owner_id === user.id) return true;
-      if (team?.members?.some(m => m.user_id === user.id)) return true;
+      if (team?.owner_id === user.auth_id) return true;
+      if (team?.members?.some(m => m.user_id === user.auth_id)) return true;
     }
     return false;
   });
 
   const canManageTheme = () => {
     if (!user || !theme) return false;
-    if (theme.owner_type === "user" && theme.owner_id === user.id) return true;
+    if (theme.owner_type === "user" && theme.owner_id === user.auth_id) return true;
     if (theme.owner_type === "team") {
       const team = userTeams.find(t => t.id === theme.owner_id);
-      if (team?.owner_id === user.id) return true;
-      const member = team?.members?.find(m => m.user_id === user.id);
+      if (team?.owner_id === user.auth_id) return true;
+      const member = team?.members?.find(m => m.user_id === user.auth_id);
       if (member?.permissions?.manage_themes) return true;
     }
     return false;
@@ -369,12 +369,12 @@ export default function ThemeDetail() {
   const sitesThemeInstalledOn = allSites.filter(site => {
     if (!theme.installed_on?.some(install => install.site_id === site.id)) return false;
     if (!user) return false;
-    if (site.owner_type === "user" && site.owner_id === user.id) return true;
+    if (site.owner_type === "user" && site.owner_id === user.auth_id) return true;
     if (site.owner_type === "team") {
       const team = userTeams.find(t => t.id === site.owner_id);
       if (!team) return false;
-      const isMember = team.owner_id === user.id || 
-                       team.members?.some(m => m.user_id === user.id && m.status === "active");
+      const isMember = team.owner_id === user.auth_id || 
+               team.members?.some(m => m.user_id === user.auth_id && m.status === "active");
       if (!isMember) return false;
       if (!theme.shared_with_teams?.includes(team.id)) return false;
       return true;
@@ -423,7 +423,7 @@ export default function ThemeDetail() {
                 </Button>
               )}
               
-              {theme.owner_type === "user" && theme.owner_id === user?.id && (
+              {theme.owner_type === "user" && theme.owner_id === user?.auth_id && (
                 <Badge className="bg-purple-100 text-purple-700 border-purple-200">
                   <Crown className="w-3 h-3 mr-1" />
                   Eigenaar

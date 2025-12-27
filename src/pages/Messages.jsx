@@ -71,8 +71,8 @@ export default function Messages() {
       if (!user) return [];
       const allTeams = await base44.entities.Team.list();
       return allTeams.filter(t => 
-        t.owner_id === user.id || 
-        t.members?.some(m => m.user_id === user.id && m.status === "active")
+        t.owner_id === user.auth_id || 
+        t.members?.some(m => m.user_id === user.auth_id && m.status === "active")
       );
     },
     enabled: !!user,
@@ -88,12 +88,12 @@ export default function Messages() {
     if (selectedFolder === "inbox") {
       // Personal inbox
       baseMessages = allMessages.filter(m => 
-        m.recipient_id === user.id && 
+        m.recipient_id === user.auth_id && 
         m.recipient_type === "user"
       );
     } else if (selectedFolder === "sent") {
       // Sent messages
-      baseMessages = allMessages.filter(m => m.sender_id === user.id);
+      baseMessages = allMessages.filter(m => m.sender_id === user.auth_id);
     } else {
       // Team inbox
       const teamId = selectedFolder.replace("team-", "");
@@ -194,7 +194,7 @@ export default function Messages() {
       const replies = message.replies || [];
       replies.push({
         message: replyText,
-        sender_id: user.id,
+        sender_id: user.auth_id,
         sender_name: user.full_name,
         sender_email: user.email,
         created_at: new Date().toISOString()
@@ -270,7 +270,7 @@ export default function Messages() {
     if (folder === "inbox") {
       // Count unread messages + messages with new replies (which also makes them unread)
       const unreadMessages = allMessages.filter(m => 
-        m.recipient_id === user.id && 
+        m.recipient_id === user.auth_id && 
         m.recipient_type === "user" && 
         !m.is_read
       );

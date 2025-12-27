@@ -166,13 +166,13 @@ export default function PluginDetail() {
   });
 
   const { data: userTeams = [] } = useQuery({
-    queryKey: ['user-teams', user?.id],
+    queryKey: ['user-teams', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       const allTeams = await base44.entities.Team.list();
       return allTeams.filter(team =>
-        team.owner_id === user.id ||
-        team.members?.some(m => m.user_id === user.id)
+        team.owner_id === user.auth_id ||
+        team.members?.some(m => m.user_id === user.auth_id)
       );
     },
     enabled: !!user,
@@ -581,11 +581,11 @@ export default function PluginDetail() {
 
   const mySites = allSites.filter(site => {
     if (!user) return false;
-    if (site.owner_type === "user" && site.owner_id === user.id) return true;
+    if (site.owner_type === "user" && site.owner_id === user.auth_id) return true;
     if (site.owner_type === "team") {
       const team = userTeams.find(t => t.id === site.owner_id);
-      if (team?.owner_id === user.id) return true;
-      if (team?.members?.some(m => m.user_id === user.id)) return true;
+      if (team?.owner_id === user.auth_id) return true;
+      if (team?.members?.some(m => m.user_id === user.auth_id)) return true;
     }
     return false;
   });
@@ -602,12 +602,12 @@ export default function PluginDetail() {
     if (!user || !plugin) return false;
     
     // Owner always has full rights
-    if (plugin.owner_type === "user" && plugin.owner_id === user.id) return true;
+    if (plugin.owner_type === "user" && plugin.owner_id === user.auth_id) return true;
     if (plugin.owner_type === "team") {
       const team = userTeams.find(t => t.id === plugin.owner_id);
-      if (team?.owner_id === user.id) return true; // Team owner always has full rights
+      if (team?.owner_id === user.auth_id) return true; // Team owner always has full rights
       
-      const member = team?.members?.find(m => m.user_id === user.id);
+      const member = team?.members?.find(m => m.user_id === user.auth_id);
       if (member?.permissions?.manage_plugins) return true;
     }
     return false;
@@ -627,7 +627,7 @@ export default function PluginDetail() {
     if (!user) return false;
     
     // User owns the site
-    if (site.owner_type === "user" && site.owner_id === user.id) return true;
+    if (site.owner_type === "user" && site.owner_id === user.auth_id) return true;
     
     // Site belongs to a team where user is a member AND plugin is shared with that team
     if (site.owner_type === "team") {
@@ -635,8 +635,8 @@ export default function PluginDetail() {
       if (!team) return false;
       
       // User is owner or member of the team
-      const isMember = team.owner_id === user.id || 
-                       team.members?.some(m => m.user_id === user.id && m.status === "active");
+      const isMember = team.owner_id === user.auth_id || 
+               team.members?.some(m => m.user_id === user.auth_id && m.status === "active");
       
       if (!isMember) return false;
       
@@ -705,7 +705,7 @@ export default function PluginDetail() {
                 </Button>
               )}
               
-              {plugin.owner_type === "user" && plugin.owner_id === user?.id && (
+              {plugin.owner_type === "user" && plugin.owner_id === user?.auth_id && (
                 <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
                   <Crown className="w-3 h-3 mr-1" />
                   Eigenaar
@@ -777,8 +777,8 @@ export default function PluginDetail() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Laatst Geüpdatet</span>
-                <span className="text-xs font-medium">
+                      const isMember = team.owner_id === user.auth_id || 
+                                       team.members?.some(m => m.user_id === user.auth_id && m.status === "active");
                   {plugin.updated_date ? format(new Date(plugin.updated_date), 'd MMM yyyy', { locale: nl }) : 'N/A'}
                 </span>
               </div>
@@ -1055,7 +1055,7 @@ export default function PluginDetail() {
                     const installedVersion = installation?.version || "Unknown";
                     
                     // Check if user is owner of this site
-                    const isOwner = site.owner_type === "user" && site.owner_id === user?.id;
+                    const isOwner = site.owner_type === "user" && site.owner_id === user?.auth_id;
 
                     return (
                       <Card key={site.id} className="border border-gray-200">

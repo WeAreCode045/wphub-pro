@@ -81,13 +81,13 @@ export default function Sites() {
   const isAdmin = user?.role === "admin";
 
   const { data: sites = [], isLoading } = useQuery({
-    queryKey: ['sites', user?.id],
+    queryKey: ['sites', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userSites = await base44.entities.Site.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       }, "-updated_date");
       
       return userSites;
@@ -99,7 +99,7 @@ export default function Sites() {
   });
 
   const { data: transferSites = [] } = useQuery({
-    queryKey: ['transfer-sites', user?.id],
+    queryKey: ['transfer-sites', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
@@ -110,8 +110,8 @@ export default function Sites() {
         if (!site.transfer_request || site.transfer_request.status !== 'pending') return false;
         
         // User is current owner OR user is requester
-        return (site.owner_type === 'user' && site.owner_id === user.id) ||
-               (site.transfer_request.requested_by_user_id === user.id);
+        return (site.owner_type === 'user' && site.owner_id === user.auth_id) ||
+               (site.transfer_request.requested_by_user_id === user.auth_id);
       });
     },
     enabled: !!user,
@@ -127,13 +127,13 @@ export default function Sites() {
   });
 
   const { data: allPlugins = [] } = useQuery({
-    queryKey: ['plugins', user?.id],
+    queryKey: ['plugins', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userPlugins = await base44.entities.Plugin.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       
       return userPlugins;
@@ -188,7 +188,7 @@ export default function Sites() {
       
       if (existing) {
         // Check if user is already the owner
-        if (existing.owner_type === 'user' && existing.owner_id === user.id) {
+        if (existing.owner_type === 'user' && existing.owner_id === user.auth_id) {
           throw new Error("Je bent al de eigenaar van deze site");
         }
         
@@ -197,7 +197,7 @@ export default function Sites() {
         throw new Error("SITE_EXISTS");
       }
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'sites');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'sites');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -211,7 +211,7 @@ export default function Sites() {
         url: siteData.url.replace(/\/$/, ''),
         api_key: apiKey,
         owner_type: "user",
-        owner_id: user.id,
+        owner_id: user.auth_id,
         connection_status: "inactive",
         shared_with_teams: []
       });
@@ -549,8 +549,8 @@ export default function Sites() {
   };
 
   const TransferCard = ({ site }) => {
-    const isCurrentOwner = site.owner_type === 'user' && site.owner_id === user?.id;
-    const isRequester = site.transfer_request?.requested_by_user_id === user?.id;
+    const isCurrentOwner = site.owner_type === 'user' && site.owner_id === user?.auth_id;
+    const isRequester = site.transfer_request?.requested_by_user_id === user?.auth_id;
     const otherUser = isCurrentOwner 
       ? allUsers.find(u => u.id === site.transfer_request?.requested_by_user_id)
       : allUsers.find(u => u.id === site.owner_id);
@@ -653,7 +653,7 @@ export default function Sites() {
   };
 
   return (
-    <FeatureGate userId={user?.id} featureType="sites">
+    <FeatureGate userId={user?.auth_id} featureType="sites">
       <div className="p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Mijn Sites</h1>

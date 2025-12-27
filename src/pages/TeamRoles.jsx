@@ -182,8 +182,8 @@ export default function TeamRoles() {
     );
   }
 
-  const isOwner = team.owner_id === user?.id;
-  const member = team.members?.find(m => m.user_id === user?.id);
+  const isOwner = team.owner_id === user?.auth_id;
+  const member = team.members?.find(m => m.user_id === user?.auth_id);
   
   // Owner always has access to manage roles
   // Or members with team role that has manage_roles permission

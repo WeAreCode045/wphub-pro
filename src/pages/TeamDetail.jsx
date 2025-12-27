@@ -459,7 +459,7 @@ export default function TeamDetail() {
         team_id: teamId,
         team_name: team.name,
         invited_email: inviteEmail,
-        invited_by_id: user.id,
+        invited_by_id: user.auth_id,
         invited_by_name: user.full_name,
         team_role_id: inviteTeamRoleId,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -551,7 +551,7 @@ export default function TeamDetail() {
         ...notificationData,
         recipient_type: "team",
         team_id: teamId,
-        sender_id: user.id,
+        sender_id: user.auth_id,
         sender_name: user.full_name
       });
     },
@@ -628,8 +628,8 @@ export default function TeamDetail() {
     );
   }
 
-  const isOwner = team.owner_id === user?.id;
-  const member = team.members?.find(m => m.user_id === user?.id);
+  const isOwner = team.owner_id === user?.auth_id;
+  const member = team.members?.find(m => m.user_id === user?.auth_id);
   const isPendingMember = member?.status === "pending";
 
   // Redirect pending members back to Teams page

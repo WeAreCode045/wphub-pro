@@ -55,11 +55,11 @@ export default function Pricing() {
   });
 
   const { data: mySubscription } = useQuery({
-    queryKey: ['my-subscription', user?.id],
+    queryKey: ['my-subscription', user?.auth_id],
     queryFn: async () => {
       if (!user) return null;
       const subs = await base44.entities.UserSubscription.filter({
-        user_id: user.id,
+        user_id: user.auth_id,
         status: ['active', 'trialing']
       });
       return subs.length > 0 ? subs[0] : null;

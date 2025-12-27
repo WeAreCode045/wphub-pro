@@ -177,8 +177,8 @@ export default function Layout({ children, currentPageName }) {
         // Load user teams once
         const allTeams = await base44.entities.Team.list();
         const teams = allTeams.filter(t =>
-          t.owner_id === currentUser.id ||
-          t.members?.some(m => m.user_id === currentUser.id && m.status === "active")
+          t.owner_id === currentUser.auth_id ||
+          t.members?.some(m => m.user_id === currentUser.auth_id && m.status === "active")
         );
         setUserTeamIds(teams.map(t => t.id));
       }
@@ -214,7 +214,7 @@ export default function Layout({ children, currentPageName }) {
     if (!user) return;
     try {
       const notifications = await base44.entities.Notification.filter({
-        recipient_id: user.id,
+        recipient_id: user.auth_id,
         is_read: false
       });
       setUnreadCount(notifications.length);
@@ -304,7 +304,7 @@ export default function Layout({ children, currentPageName }) {
     queryKey: ['header-notifications', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      return base44.entities.Notification.filter({ recipient_id: user.id }, "-created_at", 5);
+      return base44.entities.Notification.filter({ recipient_id: user.auth_id }, "-created_at", 5);
     },
     enabled: !!user && notificationsOpen,
     staleTime: 0,
@@ -361,7 +361,7 @@ export default function Layout({ children, currentPageName }) {
 
       const team = teams[0];
       const currentMembers = team.members || [];
-      const existingMemberIndex = currentMembers.findIndex(m => m.user_id === user.id);
+      const existingMemberIndex = currentMembers.findIndex(m => m.user_id === user.auth_id);
 
       let updatedMembers;
       if (existingMemberIndex !== -1) {
@@ -372,7 +372,7 @@ export default function Layout({ children, currentPageName }) {
         updatedMembers = [
           ...currentMembers,
           {
-            user_id: user.id,
+            user_id: user.auth_id,
             email: user.email,
             team_role_id: invite.team_role_id,
             status: "active",

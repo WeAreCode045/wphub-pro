@@ -180,22 +180,22 @@ export default function SiteDetail() {
   });
 
   const { data: myPlugins = [] } = useQuery({
-    queryKey: ['my-plugins', user?.id],
+    queryKey: ['my-plugins', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       const allPlugins = await base44.entities.Plugin.list();
-      return allPlugins.filter(p => p.owner_type === "user" && p.owner_id === user.id);
+      return allPlugins.filter(p => p.owner_type === "user" && p.owner_id === user.auth_id);
     },
     enabled: !!user,
     initialData: [],
   });
 
   const { data: myThemes = [] } = useQuery({
-    queryKey: ['my-themes', user?.id],
+    queryKey: ['my-themes', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       const allThemes = await base44.entities.Theme.list();
-      return allThemes.filter(t => t.owner_type === "user" && t.owner_id === user.id);
+      return allThemes.filter(t => t.owner_type === "user" && t.owner_id === user.auth_id);
     },
     enabled: !!user,
     initialData: [],
@@ -208,13 +208,13 @@ export default function SiteDetail() {
   });
 
   const { data: userTeams = [] } = useQuery({
-    queryKey: ['user-teams', user?.id],
+    queryKey: ['user-teams', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       const allTeams = await base44.entities.Team.list();
       return allTeams.filter(team =>
-        team.owner_id === user.id ||
-        team.members?.some(m => m.user_id === user.id)
+        team.owner_id === user.auth_id ||
+        team.members?.some(m => m.user_id === user.auth_id)
       );
     },
     enabled: !!user,
@@ -821,12 +821,12 @@ export default function SiteDetail() {
   const canManageSite = () => {
     if (!user || !site) return false;
 
-    if (site.owner_type === "user" && site.owner_id === user.id) return true;
+    if (site.owner_type === "user" && site.owner_id === user.auth_id) return true;
     if (site.owner_type === "team") {
       const team = userTeams.find(t => t.id === site.owner_id);
-      if (team?.owner_id === user.id) return true;
+      if (team?.owner_id === user.auth_id) return true;
 
-      const member = team?.members?.find(m => m.user_id === user.id);
+      const member = team?.members?.find(m => m.user_id === user.auth_id);
       if (member?.permissions?.manage_sites) return true;
     }
     return false;
@@ -927,7 +927,7 @@ export default function SiteDetail() {
               <Users className="w-3 h-3 mr-1" />
               {ownerTeam?.name || "Team"}
             </Badge>
-          ) : site.owner_id === user?.id ? (
+          ) : site.owner_id === user?.auth_id ? (
             <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
               <Crown className="w-3 h-3 mr-1" />
               Eigenaar

@@ -71,7 +71,7 @@ export default function SendNotificationDialog({
     mutationFn: async (data) => {
       const notificationPayload = {
         ...data,
-        sender_id: user.id,
+        sender_id: user.auth_id,
         sender_name: user.full_name,
         context: context || {}
       };

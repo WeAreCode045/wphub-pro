@@ -75,13 +75,13 @@ export default function Themes() {
   const isAdmin = user?.role === "admin";
 
   const { data: themes = [], isLoading } = useQuery({
-    queryKey: ['themes', user?.id],
+    queryKey: ['themes', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userThemes = await base44.entities.Theme.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       }, "-updated_date");
       
       return userThemes;
@@ -93,13 +93,13 @@ export default function Themes() {
   });
 
   const { data: allSites = [] } = useQuery({
-    queryKey: ['sites', user?.id],
+    queryKey: ['sites', user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
       const userSites = await base44.entities.Site.filter({
         owner_type: "user",
-        owner_id: user.id
+        owner_id: user.auth_id
       });
       
       return userSites;
@@ -122,7 +122,7 @@ export default function Themes() {
     mutationFn: async (file) => {
       if (!user) throw new Error("User not loaded");
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'themes');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'themes');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -145,7 +145,7 @@ export default function Themes() {
       const existingTheme = allExistingThemes.find(t =>
         t.slug === theme_data.slug &&
         t.owner_type === "user" &&
-        t.owner_id === user.id
+        t.owner_id === user.auth_id
       );
 
       if (existingTheme) {
@@ -160,7 +160,7 @@ export default function Themes() {
         author_url: theme_data.author_url || '',
         screenshot_url: theme_data.screenshot_url || '',
         owner_type: "user",
-        owner_id: user.id,
+        owner_id: user.auth_id,
         source: "upload",
         versions: [{
           version: theme_data.version,
@@ -203,7 +203,7 @@ export default function Themes() {
     mutationFn: async (wpTheme) => {
       if (!user) throw new Error("User not loaded");
       
-      const limitCheck = await checkSubscriptionLimit(user.id, 'themes');
+      const limitCheck = await checkSubscriptionLimit(user.auth_id, 'themes');
       
       if (!limitCheck.allowed) {
         throw new Error(limitCheck.message);
@@ -213,7 +213,7 @@ export default function Themes() {
       const existingTheme = allExistingThemes.find(t =>
         t.slug === wpTheme.slug &&
         t.owner_type === "user" &&
-        t.owner_id === user.id
+        t.owner_id === user.auth_id
       );
 
       if (existingTheme) {
@@ -228,7 +228,7 @@ export default function Themes() {
         author_url: wpTheme.author_profile || '',
         screenshot_url: wpTheme.screenshot_url || '',
         owner_type: "user",
-        owner_id: user.id,
+        owner_id: user.auth_id,
         source: "wplibrary",
         versions: [{
           version: wpTheme.version,
@@ -575,7 +575,7 @@ export default function Themes() {
   };
 
   return (
-    <FeatureGate userId={user?.id} featureType="themes">
+    <FeatureGate userId={user?.auth_id} featureType="themes">
       <div className="p-8 bg-gray-50 min-h-full">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Mijn Themes</h1>

@@ -63,8 +63,8 @@ export default function UserMessages() {
 
     const allTeams = await base44.entities.Team.list();
     const teams = allTeams.filter(t =>
-      t.owner_id === user.id ||
-      t.members?.some(m => m.user_id === user.id && m.status === "active")
+      t.owner_id === user.auth_id ||
+      t.members?.some(m => m.user_id === user.auth_id && m.status === "active")
     );
     setUserTeams(teams);
   };

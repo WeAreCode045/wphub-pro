@@ -144,7 +144,7 @@ export default function TeamSettings() {
     );
   }
 
-  const isOwner = team.owner_id === user?.id;
+  const isOwner = team.owner_id === user?.auth_id;
 
   if (!isOwner) {
     return (
