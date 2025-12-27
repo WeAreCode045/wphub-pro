@@ -95,11 +95,11 @@ export default function UserManager() {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }) => {
-      const { data: result, error } = await supabase.functions.invoke('updateUserAdmin', {
-        body: { user_id: userId, updates: data }
+      const response = await base44.functions.invoke('updateUserAdmin', {
+        user_id: userId,
+        updates: data
       });
-      if (error) throw new Error(error.message || 'Failed to update user');
-      return result;
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -108,11 +108,10 @@ export default function UserManager() {
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId) => {
-      const { data, error } = await supabase.functions.invoke('deleteUserAdmin', {
-        body: { user_id: userId }
+      const response = await base44.functions.invoke('deleteUserAdmin', {
+        user_id: userId
       });
-      if (error) throw new Error(error.message || 'Failed to delete user');
-      return data;
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
