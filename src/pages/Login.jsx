@@ -17,6 +17,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("login"); // 'login' or 'signup'
+  const [resetMode, setResetMode] = useState(false); // forgot password flow
+  const [resetStatus, setResetStatus] = useState("");
 
   const from = location.state?.from?.pathname || "/dashboard";
 
@@ -121,6 +123,24 @@ export default function Login() {
     }
   };
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setResetStatus("");
+    setError("");
+    try {
+      const { supabase } = await import('@/api/supabaseClient');
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (resetError) throw resetError;
+      setResetStatus('Check je e-mail voor de resetlink.');
+    } catch (err) {
+      setError(err.message || 'Reset mislukt. Probeer opnieuw.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4">
       <Card className="w-full max-w-md shadow-xl">
@@ -135,7 +155,7 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-4">
+          <form onSubmit={resetMode ? handleResetPassword : (mode === "login" ? handleLogin : handleSignup)} className="space-y-4">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -160,23 +180,31 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Wachtwoord</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  disabled={loading}
-                  minLength={6}
-                />
+            {!resetMode && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Wachtwoord</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    required={mode === 'login' || mode === 'signup'}
+                    disabled={loading}
+                    minLength={6}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {resetMode && (
+              <div className="text-sm text-slate-600">
+                Vul je e‑mail in en ontvang een resetlink.
+              </div>
+            )}
 
             <Button 
               type="submit" 
@@ -186,20 +214,27 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === "login" ? "Inloggen..." : "Account aanmaken..."}
+                  {resetMode ? 'Versturen...' : (mode === "login" ? "Inloggen..." : "Account aanmaken...")}
                 </>
               ) : (
-                mode === "login" ? "Inloggen" : "Account aanmaken"
+                resetMode ? 'Resetlink versturen' : (mode === "login" ? "Inloggen" : "Account aanmaken")
               )}
             </Button>
 
+            {resetStatus && (
+              <div className="text-sm text-green-600 text-center">{resetStatus}</div>
+            )}
+
+            {!resetMode && (
             <div className="relative my-4">
               <Separator />
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-950 px-2 text-xs text-slate-500">
                 Of
               </span>
             </div>
+            )}
 
+            {!resetMode && (
             <Button
               type="button"
               variant="outline"
@@ -227,7 +262,9 @@ export default function Login() {
               </svg>
               Doorgaan met Google
             </Button>
+            )}
 
+            {!resetMode && (
             <Button
               type="button"
               variant="outline"
@@ -240,11 +277,23 @@ export default function Login() {
               </svg>
               Doorgaan met GitHub
             </Button>
+            )}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-center text-slate-600 dark:text-slate-400">
-            {mode === "login" ? (
+            {resetMode ? (
+              <>
+                Terug naar login?{" "}
+                <button
+                  onClick={() => { setResetMode(false); setResetStatus(''); setError(''); }}
+                  className="text-primary hover:underline font-medium"
+                  disabled={loading}
+                >
+                  Log in
+                </button>
+              </>
+            ) : mode === "login" ? (
               <>
                 Nog geen account?{" "}
                 <button
@@ -254,6 +303,16 @@ export default function Login() {
                 >
                   Registreer nu
                 </button>
+                <div className="mt-2">
+                  Wachtwoord vergeten?{" "}
+                  <button
+                    onClick={() => { setResetMode(true); setMode('login'); }}
+                    className="text-primary hover:underline font-medium"
+                    disabled={loading}
+                  >
+                    Reset hier
+                  </button>
+                </div>
               </>
             ) : (
               <>

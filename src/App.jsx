@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
+import ResetPassword from '@/pages/ResetPassword';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -51,6 +52,7 @@ const AuthenticatedApp = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       
       {/* Protected routes */}
       <Route path="/" element={
@@ -63,7 +65,7 @@ const AuthenticatedApp = () => {
       
       {Object.entries(Pages).map(([path, Page]) => {
         // Login is already handled above
-        if (path === 'Login') return null;
+        if (path === 'Login' || path === 'ResetPassword') return null;
         
         return (
           <Route 

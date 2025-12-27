@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Mail, Building, Phone, Upload, Check, Copy, CheckCircle, Shield } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge"; // Assuming this component exists
+import { supabase } from "@/api/supabaseClient";
 
 export default function AccountSettings() {
   const [user, setUser] = useState(null);
@@ -24,6 +25,9 @@ export default function AccountSettings() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwStatus, setPwStatus] = useState({ type: null, message: "" });
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -79,6 +83,37 @@ export default function AccountSettings() {
     if (!formData.two_fa_enabled && user?.two_fa_enabled) {
       sessionStorage.removeItem('2fa_session_id');
     }
+  };
+
+  const updatePasswordMutation = useMutation({
+    mutationFn: async (password) => {
+      const { data, error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setPwStatus({ type: 'success', message: 'Wachtwoord succesvol bijgewerkt' });
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setPwStatus({ type: null, message: '' }), 3000);
+    },
+    onError: (err) => {
+      setPwStatus({ type: 'error', message: err.message || 'Bijwerken mislukt' });
+    }
+  });
+
+  const handlePasswordUpdate = (e) => {
+    e.preventDefault();
+    setPwStatus({ type: null, message: '' });
+    if (!newPassword || newPassword.length < 6) {
+      setPwStatus({ type: 'error', message: 'Gebruik minimaal 6 tekens' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwStatus({ type: 'error', message: 'Wachtwoorden komen niet overeen' });
+      return;
+    }
+    updatePasswordMutation.mutate(newPassword);
   };
 
   const copyToClipboard = (text) => {
@@ -300,6 +335,49 @@ export default function AccountSettings() {
                     Je wijzigingen zijn succesvol opgeslagen
                   </p>
                 )}
+              </div>
+
+              <div className="mt-8 border-t border-gray-100 pt-6">
+                <h3 className="text-lg font-semibold mb-4">Wachtwoord wijzigen</h3>
+                <form onSubmit={handlePasswordUpdate} className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="new_password">Nieuw wachtwoord</Label>
+                    <Input
+                      id="new_password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      minLength={6}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm_password">Bevestig wachtwoord</Label>
+                    <Input
+                      id="confirm_password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="md:col-span-2 flex items-center gap-3">
+                    <Button
+                      type="submit"
+                      disabled={updatePasswordMutation.isPending}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      {updatePasswordMutation.isPending ? 'Bijwerken...' : 'Wachtwoord bijwerken'}
+                    </Button>
+                    {pwStatus.type === 'success' && (
+                      <span className="text-sm text-green-600">{pwStatus.message}</span>
+                    )}
+                    {pwStatus.type === 'error' && (
+                      <span className="text-sm text-red-600">{pwStatus.message}</span>
+                    )}
+                  </div>
+                </form>
               </div>
             </CardContent>
           </Card>
