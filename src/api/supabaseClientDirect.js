@@ -1,6 +1,13 @@
 // Direct Supabase client - replaces Base44 adapter
 import { supabase, supabaseFunctionsUrl } from './supabaseClient';
 
+// Utility: simple UUID v4/v5 format checker
+function isUUID(value) {
+  if (typeof value !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
+}
+
 // Entity operations
 const entities = {
   User: {
@@ -200,12 +207,24 @@ const entities = {
     },
 
     async get(id) {
-      const { data, error } = await supabase.from('subscription_plans').select('*').eq('id', id).single();
+      // Avoid invalid uuid filter errors if legacy IDs are passed
+      if (!isUUID(id)) {
+        return null;
+      }
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', id)
+        .single();
       if (error) throw error;
       return data;
     },
 
     async filter(filters, orderBy = 'sort_order', limit = 1000) {
+      // If filtering by id with a non-UUID, return empty to avoid errors
+      if (filters && typeof filters.id === 'string' && !isUUID(filters.id)) {
+        return [];
+      }
       let query = supabase.from('subscription_plans').select('*');
       Object.entries(filters || {}).forEach(([key, value]) => {
         query = query.eq(key, value);
