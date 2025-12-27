@@ -129,12 +129,23 @@ Deno.serve(async (req) => {
     for (const sub of subs) {
       if (!sub.stripe_customer_id) continue;
 
-      // Fetch invoices for this customer
+      // Fetch invoices for this customer with manual pagination
       const invoices = [];
-      const iterator = stripe.invoices.list({ customer: sub.stripe_customer_id, limit: 100 }).autoPagingEach;
+      let hasMore = true;
+      let startingAfter: string | undefined = undefined;
 
-      for await (const invoice of iterator()) {
-        invoices.push(invoice);
+      while (hasMore) {
+        const response = await stripe.invoices.list({
+          customer: sub.stripe_customer_id,
+          limit: 100,
+          starting_after: startingAfter
+        });
+
+        invoices.push(...response.data);
+        hasMore = response.has_more;
+        if (response.data.length > 0) {
+          startingAfter = response.data[response.data.length - 1].id;
+        }
       }
 
       for (const invoice of invoices) {
