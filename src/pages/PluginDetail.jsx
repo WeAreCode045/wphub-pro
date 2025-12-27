@@ -777,8 +777,8 @@ export default function PluginDetail() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                      const isMember = team.owner_id === user.auth_id || 
-                                       team.members?.some(m => m.user_id === user.auth_id && m.status === "active");
+                <span className="text-xs text-gray-500">Laatst Geüpdatet</span>
+                <span className="text-xs font-medium">
                   {plugin.updated_date ? format(new Date(plugin.updated_date), 'd MMM yyyy', { locale: nl }) : 'N/A'}
                 </span>
               </div>

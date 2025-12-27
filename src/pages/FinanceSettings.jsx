@@ -48,7 +48,9 @@ export default function FinanceSettings() {
   const [user, setUser] = useState(null);
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState("");
   const [editingDiscount, setEditingDiscount] = useState(null);
   const [invoiceSettings, setInvoiceSettings] = useState({
     vat_rate: "21",
@@ -184,6 +186,23 @@ export default function FinanceSettings() {
     },
     onError: (error) => {
       alert('❌ Import mislukt: ' + (error.response?.data?.error || error.message));
+    }
+  });
+
+  const syncStripeMutation = useMutation({
+    mutationFn: async (subscriptionId) => {
+      const result = await base44.functions.invoke('syncStripeSubscription', { subscription_id: subscriptionId });
+      return result.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['all-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setShowSyncDialog(false);
+      setSelectedSubscriptionId("");
+      alert(`✅ ${data.message}\n\nStatus: ${data.stripe_data.status}\nPeriode: ${new Date(data.stripe_data.current_period_start * 1000).toLocaleDateString('nl-NL')} - ${new Date(data.stripe_data.current_period_end * 1000).toLocaleDateString('nl-NL')}`);
+    },
+    onError: (error) => {
+      alert('❌ Sync mislukt: ' + (error.message || 'Onbekende fout'));
     }
   });
 
@@ -506,6 +525,21 @@ export default function FinanceSettings() {
                     <CreditCard className="w-4 h-4 mr-2" />
                     Open Stripe Dashboard
                   </Button>
+                </div>
+
+                <div>
+                  <Label>Subscription Sync</Label>
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2"
+                    onClick={() => setShowSyncDialog(true)}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Sync Stripe Subscription Data
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Synchroniseer de nieuwste gegevens van een abonnement vanuit Stripe
+                  </p>
                 </div>
 
                 <div>
@@ -990,6 +1024,92 @@ export default function FinanceSettings() {
                     <>
                       <Upload className="w-4 h-4 mr-2" />
                       Importeren
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sync Stripe Subscription Dialog */}
+        <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-indigo-600" />
+                Sync Stripe Subscription
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 mt-4">
+              <p className="text-sm text-gray-600">
+                Synchroniseer de nieuwste abonnementsgegevens vanuit Stripe. Dit haalt de actuele status, periode en factuurgegevens op.
+              </p>
+
+              <div>
+                <Label htmlFor="subscription-select">Selecteer Abonnement</Label>
+                <Select value={selectedSubscriptionId} onValueChange={setSelectedSubscriptionId}>
+                  <SelectTrigger id="subscription-select" className="mt-2">
+                    <SelectValue placeholder="Kies een abonnement..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allSubscriptions
+                      .filter(sub => sub.stripe_subscription_id)
+                      .map(sub => {
+                        const user = allUsers.find(u => u.id === sub.user_id);
+                        const plan = plans.find(p => p.id === sub.plan_id);
+                        return (
+                          <SelectItem key={sub.id} value={sub.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user?.full_name || 'Unknown User'}</span>
+                              <span className="text-xs text-gray-500">
+                                {plan?.name || 'Unknown Plan'} - {sub.status}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Alleen abonnementen met een Stripe Subscription ID worden getoond
+                </p>
+              </div>
+
+              {selectedSubscriptionId && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <p className="text-sm text-blue-900">
+                    <strong>Let op:</strong> Dit synchroniseert status, periode, factuur en andere gegevens van Stripe. Lokale wijzigingen kunnen worden overschreven.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowSyncDialog(false);
+                    setSelectedSubscriptionId("");
+                  }}
+                  className="flex-1"
+                >
+                  Annuleren
+                </Button>
+                <Button
+                  onClick={() => syncStripeMutation.mutate(selectedSubscriptionId)}
+                  disabled={!selectedSubscriptionId || syncStripeMutation.isPending}
+                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                >
+                  {syncStripeMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Synchroniseren...
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp className="w-4 h-4 mr-2" />
+                      Synchroniseren
                     </>
                   )}
                 </Button>
