@@ -1,16 +1,34 @@
+// @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@14.11.0';
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', { apiVersion: '2023-10-16' });
+const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY') || '';
+const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' });
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase env vars');
+      return new Response(
+        JSON.stringify({ error: 'Server misconfigured', details: 'Missing Supabase env vars' }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (!stripeSecret) {
+      console.error('Missing STRIPE_SECRET_KEY');
+      return new Response(
+        JSON.stringify({ error: 'Server misconfigured', details: 'Missing STRIPE_SECRET_KEY' }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get auth user
@@ -22,7 +40,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace('Bearer ', '').trim();
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !authUser) {
@@ -47,7 +65,17 @@ Deno.serve(async (req) => {
     }
 
     // Get subscription_id from request
-    const { subscription_id } = await req.json();
+    let subscription_id: string | undefined;
+    try {
+      const body = await req.json();
+      subscription_id = body?.subscription_id;
+    } catch (e) {
+      console.error('Failed to parse JSON body', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     if (!subscription_id) {
       return new Response(
@@ -64,6 +92,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (subError || !userSub) {
+      console.error('Subscription lookup failed', subError);
       return new Response(
         JSON.stringify({ error: 'Subscription not found' }),
         { status: 404, headers: corsHeaders }
@@ -78,9 +107,18 @@ Deno.serve(async (req) => {
     }
 
     // Fetch subscription from Stripe
-    const stripeSubscription = await stripe.subscriptions.retrieve(userSub.stripe_subscription_id, {
-      expand: ['latest_invoice', 'customer', 'default_payment_method']
-    });
+    let stripeSubscription;
+    try {
+      stripeSubscription = await stripe.subscriptions.retrieve(userSub.stripe_subscription_id, {
+        expand: ['latest_invoice', 'customer', 'default_payment_method']
+      });
+    } catch (stripeError: any) {
+      console.error('Stripe subscription retrieve failed', stripeError);
+      return new Response(
+        JSON.stringify({ error: 'Stripe subscription retrieval failed', details: stripeError?.message }),
+        { status: 502, headers: corsHeaders }
+      );
+    }
 
     // Map Stripe status to our status
     const statusMapping: Record<string, string> = {
