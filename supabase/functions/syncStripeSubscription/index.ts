@@ -15,17 +15,19 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase env vars');
+      const detail = 'Missing Supabase env vars (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)';
+      console.error(detail);
       return new Response(
-        JSON.stringify({ error: 'Server misconfigured', details: 'Missing Supabase env vars' }),
+        JSON.stringify({ error: 'Server misconfigured', details: detail }),
         { status: 500, headers: corsHeaders }
       );
     }
 
     if (!stripeSecret) {
-      console.error('Missing STRIPE_SECRET_KEY');
+      const detail = 'Missing STRIPE_SECRET_KEY secret in function environment';
+      console.error(detail);
       return new Response(
-        JSON.stringify({ error: 'Server misconfigured', details: 'Missing STRIPE_SECRET_KEY' }),
+        JSON.stringify({ error: 'Server misconfigured', details: detail }),
         { status: 500, headers: corsHeaders }
       );
     }
